@@ -1,0 +1,16 @@
+# Build
+bin/
+obj/
+*.zip
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# Sistema
+.DS_Store
+Thumbs.db
