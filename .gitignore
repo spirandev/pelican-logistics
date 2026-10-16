@@ -14,3 +14,7 @@ obj/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Testes
+TestResults/
+*.received.*
