@@ -6,7 +6,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 
 | Fase | Status | Branch | PR | Teste local |
 |---|---|---|---|---|
-| 0: Estrutura | Não iniciada | | | |
+| 0: Estrutura | Aguardando teste local | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | |
 | 1: Base | Não iniciada | | | |
 | 2: Máquinas | Não iniciada | | | |
 | 3: Persistência | Não iniciada | | | |
@@ -37,4 +37,6 @@ Formato sugerido:
 
 Registradas pelo agente quando precisou decidir algo que nem o README nem o plano cobriam.
 
-(nenhuma ainda)
+### Fase 0
+- Branch: a sessão na nuvem só pode publicar numa branch com prefixo `claude/`, então a Fase 0 usou `claude/fase-0-estrutura-ohoxty` em vez de `fase-0-estrutura`.
+- Templates: o SDK 8 não aceita `dotnet new classlib -f net6.0`; os projetos foram gerados com o padrão e os `.csproj` substituídos pelos do plano (`net6.0`).
