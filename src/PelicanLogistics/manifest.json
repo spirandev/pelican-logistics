@@ -1,0 +1,10 @@
+{
+  "Name": "Pelican Logistics",
+  "Author": "spirandev",
+  "Version": "0.1.0-alpha",
+  "Description": "Esteiras, filtros e divisores para automatizar a fazenda.",
+  "UniqueID": "spirandev.PelicanLogistics",
+  "EntryDll": "PelicanLogistics.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": []
+}
