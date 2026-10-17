@@ -189,4 +189,34 @@ No Inseridor, o progresso da mão vai de `0` (na origem) a `600` (no destino) em
 - **Máquinas:** o Inseridor guarda os itens nos **slots virtuais** da máquina (Principal e Adicional) e a aciona quando tudo está completo. Quebrar a máquina solta no chão os itens guardados. Covo e Barril de carvalho não são suportados na alpha.
 - **Esteira:** só recebe por trás. Uma esteira sem nada atrás e com outra (ou um Inseridor) entregando pela lateral vira curva.
 - **Remover:** quebre o bloco com a picareta; ele e o item que carregava (na esteira ou na mão do Inseridor) caem no chão.
-- **Limitação até a Fase 3:** os itens em trânsito, os itens na mão dos Inseridores e os guardados nos slots virtuais somem ao salvar e carregar o jogo (a Fase 4 resolve).
+- **Salvar e carregar:** os itens nas esteiras, na mão dos Inseridores e nos slots virtuais das máquinas continuam onde estavam (ver a seção 10).
+
+---
+
+## 10. Como o mod salva
+
+O jogo salva sozinho os blocos colocados e o `modData` deles: direção, "Retirar de" e "Colocar em". O resto (o **estado em tempo de execução**) é salvo pelo mod desde a Fase 4, em duas partes:
+
+- **Estado em JSON**, nos dados do mod dentro do save (`Helper.Data.WriteSaveData`, chave `runtime-state`): para cada local, cada bloco com a posição, o tipo, o progresso, o lado de entrada e se está bloqueado de cada espaço, a volta do braço e a última entrada do Inseridor; e os slots virtuais de cada máquina. Os itens **não** vão no JSON: cada espaço guarda só o **índice** do item na lista abaixo.
+- **Itens num inventário global do jogo** (`spirandev.PelicanLogistics/Transit`), que o próprio jogo grava no save com segurança (anéis, ferramentas, itens com sabor etc.).
+
+O fluxo:
+
+1. **Ao salvar** (`GameLoop.Saving`, também ao dormir): o mod gera o JSON, coloca os itens no inventário global na ordem dos índices e grava o JSON. Os itens continuam nas esteiras; o inventário é só o "veículo" para o arquivo.
+2. **Depois de salvar** (`GameLoop.Saved`): o inventário global é esvaziado, para nenhuma função do jogo que percorre todos os itens enxergar cópias.
+3. **Ao carregar** (`GameLoop.SaveLoaded`): o mod recria os blocos a partir dos objetos do mapa, devolve cada item ao seu espaço pelo índice e esvazia o inventário global.
+
+**Itens órfãos.** Nenhum item é perdido em silêncio. Cada caso é registrado no log do SMAPI como aviso (`WARN`):
+
+| Situação ao carregar | O que acontece com os itens |
+|---|---|
+| O bloco não existe mais naquele tile, ou é de outro tipo | Caem no chão, no tile do bloco |
+| Slots virtuais de uma máquina que não existe mais | Caem no chão, no tile da máquina |
+| O local não existe mais | Caem no chão perto da porta da casa da fazenda |
+| Itens no inventário sem estado, ou que nenhum espaço usou | Caem no chão perto da porta da casa da fazenda |
+| Versão do estado desconhecida | Nada é restaurado; todos caem no chão onde estavam |
+| Erro ao restaurar (`ERROR` no log) | Os blocos ficam vazios e todos os itens caem perto da casa da fazenda |
+
+Se a gravação falhar (`ERROR` no log), o jogo salva assim mesmo: os itens vão para o inventário global sem o estado e, ao carregar, caem perto da casa da fazenda.
+
+Desinstalar o mod com itens em trânsito não é suportado na alpha: os blocos viram itens de erro do jogo e os itens do inventário global ficam inacessíveis no save.
