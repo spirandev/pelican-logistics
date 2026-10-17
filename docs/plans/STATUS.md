@@ -10,7 +10,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
-| 4: Persistência | Não iniciada | | | |
+| 4: Persistência | Aguardando teste local | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | |
 | 5: Roteamento | Não iniciada | | | |
 | 6: Itens restantes | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
@@ -50,7 +50,7 @@ Formato sugerido:
 - O mod compila contra o jogo (0 avisos) e não há erros do mod no log.
 - Testado e funcionando: baú → Inseridor → baú com o braço, baú → Inseridor → esteira → Inseridor → baú, baú misto → Inseridor (Automático) → fornalha com as barras saindo por outro Inseridor, esteira chegando pela lateral, esteira passando de lado ignorada, rodízio entre baú atrás e esteira na lateral, interface com "Retirar de" e "Colocar em".
 - Não testado: destino cheio com o item esperando na mão e quebrar um Inseridor com item na mão (os testes do Core cobrem os dois).
-- [ ] Ajuste: remover a migração dos Extratores (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource` e a chamada no `WorldRegistry.Rebuild`). O usuário não tem mais saves com Extratores e não vai precisar dela. A proteção do `Added` (ignorar tile que já tem nó) pode ficar.
+- [x] Ajuste: remover a migração dos Extratores (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource` e a chamada no `WorldRegistry.Rebuild`). O usuário não tem mais saves com Extratores e não vai precisar dela. A proteção do `Added` (ignorar tile que já tem nó) pode ficar. **Feito na Fase 4.**
 - Observação de desempenho (não é bug): sem nada para pegar (ex.: baú só com madeira abastecendo uma fornalha), o Inseridor testa todas as pilhas do baú contra as regras da máquina a cada tick. Se o teste de desempenho da Fase 7 mostrar queda de FPS, fazer o Inseridor esperar alguns ticks antes de tentar de novo depois de uma tentativa sem sucesso.
 
 ---
@@ -96,3 +96,15 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - `ItemIds.IsOurBigCraftable` passou a aceitar só os blocos registrados. Assim o Extrator antigo não é tratado como bloco do mod: o aviso `Removed` da migração não apaga o nó do Inseridor novo, e o patch de desenho não tenta desenhá-lo.
 - `pl_dump`: a mão do Inseridor aparece como `hand=[...]`, no mesmo formato dos espaços das esteiras.
 - Limitação da alpha: Extratores guardados em baús ou no inventário não são migrados e viram itens de erro do jogo. Só os colocados no mapa viram Inseridores.
+
+### Fase 4
+- Branch: o push para `fase-4-persistencia` funcionou nesta sessão, então foi usado o nome do plano (sem o prefixo `claude/`).
+- Pendência da Fase 3 resolvida: migração dos Extratores removida (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource`). A proteção do `Added` ficou.
+- Volta do braço: o `Cooldown` do DTO é lido e gravado por métodos virtuais (`ExportCooldown`/`ImportCooldown`), como os ponteiros; ao importar, fica limitado a `0..InserterReturnTicks`.
+- Valores inválidos ao importar: `InputPointer` fora de `Direction` → `LastInput = null`; `EntrySide` inválido → traseira do nó; `Blocked` só vale com o progresso no fim; `MainRequired` no mínimo 1.
+- Cada índice da lista de itens é resolvido no máximo uma vez: um estado corrompido não duplica itens. Slot (ou slots virtuais) já ocupado ao importar não é sobrescrito; o item salvo vira órfão.
+- Slots virtuais de uma grade sem nós: a grade é criada, e o adaptador acha o local (`WorldRegistry.FindLocation`) e o registra, para a máquina continuar sendo acionada.
+- Ao carregar, o inventário global é esvaziado logo depois de copiado (antes do `Import`). Erro no `Import`: os nós são recriados vazios e todos os itens caem perto da casa (sem duplicar o que já tinha sido restaurado). Itens do inventário que nenhum slot usou também caem perto da casa.
+- Erro ao salvar: todos os itens vão para o inventário global sem estado (`WriteSaveData` com `null`); ao carregar, caem perto da casa.
+- "Perto da casa da fazenda" = tile de `Farm.GetMainFarmHouseEntry()`.
+- Mensagens de log em pt-BR no código, como as já existentes no `WorldRegistry`; sem textos novos para o jogador no `i18n`.
