@@ -42,15 +42,20 @@ internal sealed class WorldRegistry
         return this.locations.TryGetValue(key, out location);
     }
 
-    /// <summary>Recria todos os nós a partir dos objetos dos locais (ao carregar o save).</summary>
+    /// <summary>
+    /// Recria todos os nós a partir dos objetos dos locais (ao carregar o save). Antes, troca os Extratores
+    /// antigos por Inseridores (<see cref="LegacyMigration"/>).
+    /// </summary>
     public void Rebuild()
     {
         this.Clear();
 
         int count = 0;
+        int migrated = 0;
         Utility.ForEachLocation(
             location =>
             {
+                migrated += LegacyMigration.MigrateExtractors(location);
                 foreach (KeyValuePair<Vector2, SObject> pair in location.objects.Pairs)
                 {
                     if (this.TryAddNode(location, pair.Key, pair.Value))
@@ -62,6 +67,8 @@ internal sealed class WorldRegistry
             true,   // includeInteriors: interiores de construções (celeiros, galpões, estufa...)
             false); // includeGenerated: minas e outros níveis temporários não guardam objetos
 
+        if (migrated > 0)
+            this.monitor.Log($"{migrated} Extrator(es) da versão anterior trocado(s) por Inseridor(es), na mesma direção.", LogLevel.Info);
         this.monitor.Log($"{count} bloco(s) registrado(s) em {this.locations.Count} local(is).", LogLevel.Trace);
     }
 
@@ -88,7 +95,9 @@ internal sealed class WorldRegistry
 
         foreach ((Vector2 tile, SObject obj) in e.Added)
         {
-            if (!ItemIds.IsOurBlock(obj))
+            // Tile que já tem nó: o aviso é de uma troca feita pelo próprio mod (migração do Extrator), que o SMAPI
+            // só informa no tick seguinte. Um bloco quebrado e colocado de novo gera Removed antes, então não cai aqui.
+            if (!ItemIds.IsOurBlock(obj) || this.GetNode(location, ToTilePos(tile)) != null)
                 continue;
 
             // Sempre a direção da seta e a configuração padrão: ao colocar, o jogo copia o modData do item

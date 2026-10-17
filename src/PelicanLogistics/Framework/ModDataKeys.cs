@@ -8,12 +8,15 @@ internal static class ModDataKeys
     /// <summary>Direção do bloco: "North" | "East" | "South" | "West".</summary>
     public const string Facing = Prefix + "Facing";
 
-    /// <summary>De onde o Extrator retira em máquinas: "Product" | "Main" | "Additional".</summary>
-    public const string ExtractorSource = Prefix + "ExtractorSource";
+    /// <summary>De onde o Inseridor retira quando atrás há uma máquina: "Product" | "Main" | "Additional".</summary>
+    public const string PickupSource = Prefix + "PickupSource";
 
     /// <summary>Qual slot o Inseridor abastece em máquinas: "Auto" | "Main" | "Additional".</summary>
     public const string InserterSlotMode = Prefix + "InserterSlotMode";
 
     /// <summary>Chaves de configuração (tudo menos a direção), apagadas quando o bloco é colocado.</summary>
-    public static readonly string[] Config = { ExtractorSource, InserterSlotMode };
+    public static readonly string[] Config = { PickupSource, InserterSlotMode };
+
+    /// <summary>"Retirar de" do Extrator das Fases 1 e 2. Lido só na migração para <see cref="PickupSource"/>.</summary>
+    public const string LegacyExtractorSource = Prefix + "ExtractorSource";
 }

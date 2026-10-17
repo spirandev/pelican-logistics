@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using StardewValley;
 using SObject = StardewValley.Object;
 
@@ -10,29 +11,36 @@ internal static class ItemIds
 {
     public const string Prefix = "spirandev.PelicanLogistics_";
     public const string Belt = Prefix + "Belt";
-    public const string Extractor = Prefix + "Extractor";
     public const string Inserter = Prefix + "Inserter";
+
+    /// <summary>
+    /// Extrator das Fases 1 e 2, unificado no Inseridor na Fase 3. Usado só para migrar os saves de teste
+    /// (<see cref="World.LegacyMigration"/>): não é registrado nem tratado como bloco do mod.
+    /// </summary>
+    public const string LegacyExtractor = Prefix + "Extractor";
 
     /// <summary>Prefixo do tipo Big Craftable nos IDs qualificados.</summary>
     private const string BigCraftableTypePrefix = "(BC)";
 
     /// <summary>Todos os blocos (Big Craftables) do mod, na ordem da loja e do <c>pl_give</c>.</summary>
-    public static readonly IReadOnlyList<string> AllBlocks = new[] { Belt, Extractor, Inserter };
+    public static readonly IReadOnlyList<string> AllBlocks = new[] { Belt, Inserter };
+
+    /// <summary>IDs qualificados de <see cref="AllBlocks"/>.</summary>
+    private static readonly HashSet<string> QualifiedBlocks = new(AllBlocks.Select(Qualified), StringComparer.Ordinal);
 
     /// <summary>Chave do item nos textos do i18n (ex.: "belt" para <c>item.belt.name</c>).</summary>
     private static readonly IReadOnlyDictionary<string, string> TranslationKeys = new Dictionary<string, string>
     {
         [Belt] = "belt",
-        [Extractor] = "extractor",
         [Inserter] = "inserter",
     };
 
     public static string Qualified(string id) => BigCraftableTypePrefix + id;
 
-    /// <summary>True se o ID qualificado é de um Big Craftable do mod.</summary>
+    /// <summary>True se o ID qualificado é de um Big Craftable registrado pelo mod (o Extrator antigo não conta).</summary>
     public static bool IsOurBigCraftable(string? qualifiedItemId)
     {
-        return qualifiedItemId != null && qualifiedItemId.StartsWith(BigCraftableTypePrefix + Prefix, StringComparison.Ordinal);
+        return qualifiedItemId != null && QualifiedBlocks.Contains(qualifiedItemId);
     }
 
     /// <summary>True se o item é um bloco do mod.</summary>
@@ -44,7 +52,7 @@ internal static class ItemIds
     /// <summary>True se o bloco (ID não qualificado) tem direção e pode ser girado.</summary>
     public static bool IsDirectional(string itemId)
     {
-        return itemId is Belt or Extractor or Inserter;
+        return itemId is Belt or Inserter;
     }
 
     /// <summary>Chave do item no i18n, ex.: "belt".</summary>
