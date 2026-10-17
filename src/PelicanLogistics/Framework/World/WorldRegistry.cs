@@ -88,8 +88,9 @@ internal sealed class WorldRegistry
             if (!ItemIds.IsOurBlock(obj))
                 continue;
 
-            if (!NodeFactory.HasFacing(obj))
-                NodeFactory.WriteFacing(obj, this.placementDirection());
+            // Sempre a direção da seta: ao colocar, o jogo copia o modData do item segurado (getOne), então um
+            // bloco recolhido e colocado de novo traria a direção antiga.
+            NodeFactory.WriteFacing(obj, this.placementDirection());
             this.TryAddNode(location, tile, obj);
         }
     }

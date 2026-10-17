@@ -24,11 +24,6 @@ internal static class NodeFactory
         };
     }
 
-    public static bool HasFacing(SObject obj)
-    {
-        return obj.modData.ContainsKey(ModDataKeys.Facing);
-    }
-
     public static Direction ReadFacing(SObject obj)
     {
         return obj.modData.TryGetValue(ModDataKeys.Facing, out string? raw)
