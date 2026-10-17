@@ -9,7 +9,13 @@ namespace PelicanLogistics.Core.Tests.Fakes;
 /// <summary>Monta grades de teste com pouco código e roda ticks.</summary>
 public sealed class GridBuilder
 {
-    public LogisticsGrid Grid { get; } = new();
+    /// <param name="grid">Grade a montar (ex.: a de um <see cref="LogisticsWorld"/>); null cria uma nova.</param>
+    public GridBuilder(LogisticsGrid? grid = null)
+    {
+        this.Grid = grid ?? new LogisticsGrid();
+    }
+
+    public LogisticsGrid Grid { get; }
 
     public FakeEndpoints Endpoints { get; } = new();
 

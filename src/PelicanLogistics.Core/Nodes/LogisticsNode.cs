@@ -77,6 +77,28 @@ public abstract class LogisticsNode
         return null;
     }
 
+    /// <summary>Ticks de espera para a persistência (Inseridor: volta do braço). 0 = nenhum.</summary>
+    internal virtual int ExportCooldown()
+    {
+        return 0;
+    }
+
+    /// <summary>Restaura os ticks de espera salvos. Por padrão, ignora.</summary>
+    internal virtual void ImportCooldown(int ticks)
+    {
+    }
+
+    /// <summary>Ponteiros de rodízio para a persistência (Inseridor: última entrada; Divisor, Fase 5). -1 = não usado.</summary>
+    internal virtual (int Input, int Output) ExportPointers()
+    {
+        return (-1, -1);
+    }
+
+    /// <summary>Restaura os ponteiros de rodízio salvos. Por padrão, ignora.</summary>
+    internal virtual void ImportPointers(int input, int output)
+    {
+    }
+
     /// <summary>Um tick de lógica.</summary>
     public abstract void Update(TickContext ctx);
 }
