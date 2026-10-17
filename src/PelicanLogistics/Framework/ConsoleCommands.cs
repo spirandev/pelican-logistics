@@ -1,5 +1,9 @@
 using System.Linq;
 using System.Text;
+using PelicanLogistics.Core.Endpoints;
+using PelicanLogistics.Core.Geometry;
+using PelicanLogistics.Core.Items;
+using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Framework.World;
@@ -29,6 +33,7 @@ internal sealed class ConsoleCommands
     {
         this.helper.ConsoleCommands.Add("pl_give", this.helper.Translation.Get("command.give.description", new { amount = GiveAmount }), this.Give);
         this.helper.ConsoleCommands.Add("pl_dump", this.helper.Translation.Get("command.dump.description"), this.Dump);
+        this.helper.ConsoleCommands.Add("pl_inspect", this.helper.Translation.Get("command.inspect.description"), this.Inspect);
     }
 
     /// <summary>pl_give: coloca no inventário 10 de cada item do mod.</summary>
@@ -75,6 +80,64 @@ internal sealed class ConsoleCommands
         this.monitor.Log(report.ToString().TrimEnd(), LogLevel.Info);
     }
 
+    /// <summary>pl_inspect: o nó sob o cursor (tipo, direção, configuração, itens) e, se for uma máquina, os slots virtuais.</summary>
+    private void Inspect(string command, string[] args)
+    {
+        GameLocation? location = Game1.currentLocation;
+        if (!Context.IsWorldReady || location == null)
+        {
+            this.monitor.Log(this.helper.Translation.Get("command.world-not-ready"), LogLevel.Warn);
+            return;
+        }
+
+        TilePos pos = WorldRegistry.ToTilePos(this.helper.Input.GetCursorPosition().Tile);
+        LogisticsNode? node = this.registry.GetNode(location, pos);
+        VirtualSlots? slots = this.registry.GetMachineSlots(location, pos);
+        IEndpoint? endpoint = new GameEndpointProvider(location).GetEndpoint(pos);
+
+        var report = new StringBuilder();
+        if (node != null)
+            report.AppendLine(this.helper.Translation.Get("command.inspect.node", new { node = Describe(node) }).ToString());
+
+        if (endpoint is MachineEndpoint machine)
+        {
+            report.AppendLine(this.helper.Translation.Get("command.inspect.machine", new { name = machine.DisplayName, tile = pos }).ToString());
+            this.DescribeSlots(report, machine, slots);
+        }
+        else if (slots != null)
+        {
+            // A máquina não está mais lá (ou não é suportada), mas ainda há itens guardados.
+            report.AppendLine(this.helper.Translation.Get("command.inspect.orphan-slots", new { tile = pos }).ToString());
+            foreach (ILogisticsItem item in slots.AllItems())
+                report.AppendLine($"  {item.DisplayName} x{item.Count}");
+        }
+
+        if (report.Length == 0)
+            report.Append(this.helper.Translation.Get("command.inspect.nothing", new { tile = pos }).ToString());
+
+        this.monitor.Log(report.ToString().TrimEnd(), LogLevel.Info);
+    }
+
+    /// <summary>Linhas dos slots virtuais, ex.: "Principal: 3/5 Minério de cobre" (README "Slots virtuais").</summary>
+    private void DescribeSlots(StringBuilder report, MachineEndpoint machine, VirtualSlots? slots)
+    {
+        if (slots?.Main != null)
+            report.AppendLine(this.helper.Translation.Get("command.inspect.main", new { count = slots.Main.Count, required = slots.MainRequired, item = slots.Main.DisplayName }).ToString());
+        else
+            report.AppendLine(this.helper.Translation.Get("command.inspect.main-empty").ToString());
+
+        foreach (AdditionalRequirement req in machine.AdditionalRequirements)
+        {
+            string name = ItemRegistry.GetDataOrErrorItem(req.Id).DisplayName;
+            int count = slots?.CountOf(req) ?? 0;
+            report.AppendLine(this.helper.Translation.Get("command.inspect.additional", new { count, required = req.RequiredCount, item = name }).ToString());
+        }
+
+        report.AppendLine(this.helper.Translation.Get(
+            "command.inspect.state",
+            new { idle = machine.IsIdle, ready = machine.PeekOutput()?.DisplayName ?? "-", repeating = machine.IsRepeating }).ToString());
+    }
+
     private static string Describe(LogisticsNode node)
     {
         var line = new StringBuilder($"{node.Position} {node.Kind} facing={node.Facing}");
@@ -84,10 +147,10 @@ internal sealed class ConsoleCommands
                 line.Append($" tier={belt.Tier} input={belt.InputSide}");
                 break;
             case ExtractorNode extractor:
-                line.Append($" tier={extractor.Tier} cooldown={extractor.Cooldown}");
+                line.Append($" tier={extractor.Tier} source={extractor.Source} cooldown={extractor.Cooldown}");
                 break;
             case InserterNode inserter:
-                line.Append($" tier={inserter.Tier} cooldown={inserter.Cooldown}");
+                line.Append($" tier={inserter.Tier} slot={inserter.SlotMode} cooldown={inserter.Cooldown}");
                 break;
         }
 

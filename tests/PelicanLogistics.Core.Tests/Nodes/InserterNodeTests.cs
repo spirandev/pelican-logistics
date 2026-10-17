@@ -1,4 +1,5 @@
 using PelicanLogistics.Core.Geometry;
+using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Tests.Fakes;
 using PelicanLogistics.Core.Simulation;
@@ -176,5 +177,203 @@ public class InserterNodeTests
 
         Assert.Equal(20, chest.CountTotal());
         Assert.Equal(30, stack.Count);
+    }
+
+    // Máquinas (Fase 2). Montagem padrão: esteira (0,0) → Inseridor (1,0) → máquina (2,0).
+
+    private static GridBuilder MachineLine(FakeMachine machine, InserterSlotMode mode, TransferTier tier = TransferTier.Single)
+    {
+        return new GridBuilder()
+            .Belt(-1, 0, Direction.East)
+            .Belt(0, 0, Direction.East)
+            .Inserter(1, 0, Direction.East, mode, tier)
+            .Machine(2, 0, machine);
+    }
+
+    [Fact]
+    public void Inserter_Auto_FillsFurnaceMainOneByOneUpToFive_RestWaitsOnBelt()
+    {
+        var machine = FakeMachine.Furnace();
+        var ore = new FakeItem(FakeMachine.Ids.CopperOre, 8);
+        var g = MachineLine(machine, InserterSlotMode.Auto).Item(0, 0, ore, Balance.End);
+
+        g.Run(1);
+        Assert.Equal(1, g.SlotsAt(2, 0)!.Main!.Count);
+
+        g.Run(300);
+
+        VirtualSlots slots = g.SlotsAt(2, 0)!;
+        Assert.Equal(FakeMachine.Ids.CopperOre, slots.Main!.QualifiedItemId);
+        Assert.Equal(5, slots.Main.Count);
+        Assert.Equal(5, slots.MainRequired);
+        Assert.Same(ore, g.BeltAt(0, 0).Slot.Item);
+        Assert.Equal(3, ore.Count);
+        Assert.True(g.BeltAt(0, 0).Slot.Blocked);
+        Assert.Empty(machine.Starts);
+    }
+
+    [Fact]
+    public void Inserter_Auto_CoalGoesToAdditional_OreGoesToMain()
+    {
+        var machine = FakeMachine.Furnace();
+        var g = MachineLine(machine, InserterSlotMode.Auto)
+            .Item(0, 0, new FakeItem(FakeMachine.Ids.Coal, 1), Balance.End)
+            .Item(-1, 0, new FakeItem(FakeMachine.Ids.CopperOre, 3), Balance.End);
+
+        g.Run(400);
+
+        VirtualSlots slots = g.SlotsAt(2, 0)!;
+        Assert.Equal(1, slots.Additional[FakeMachine.Ids.Coal].Count);
+        Assert.Equal(FakeMachine.Ids.CopperOre, slots.Main!.QualifiedItemId);
+        Assert.Equal(3, slots.Main.Count);
+        Assert.Equal(0, g.CountInTransit());
+        Assert.Empty(machine.Starts);
+    }
+
+    [Fact]
+    public void Inserter_MainMode_RefusesCoal_CoalStaysOnBelt()
+    {
+        var coal = new FakeItem(FakeMachine.Ids.Coal, 3);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Main).Item(0, 0, coal, Balance.End);
+
+        g.Run(200);
+
+        Assert.Same(coal, g.BeltAt(0, 0).Slot.Item);
+        Assert.Equal(3, coal.Count);
+        Assert.True(g.BeltAt(0, 0).Slot.Blocked);
+        Assert.Null(g.SlotsAt(2, 0));
+        Assert.Equal(0, g.NodeAt<InserterNode>(1, 0).Cooldown);
+    }
+
+    [Fact]
+    public void Inserter_AdditionalMode_RefusesOre()
+    {
+        var ore = new FakeItem(FakeMachine.Ids.CopperOre, 5);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Additional).Item(0, 0, ore, Balance.End);
+
+        g.Run(200);
+
+        Assert.Same(ore, g.BeltAt(0, 0).Slot.Item);
+        Assert.Equal(5, ore.Count);
+        Assert.Null(g.SlotsAt(2, 0));
+    }
+
+    [Fact]
+    public void Inserter_AdditionalMode_InsertsOnlyWhatIsMissing()
+    {
+        var coal = new FakeItem(FakeMachine.Ids.Coal, 3);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Additional).Item(0, 0, coal, Balance.End);
+
+        g.Run(200);
+
+        Assert.Equal(1, g.SlotsAt(2, 0)!.Additional[FakeMachine.Ids.Coal].Count);
+        Assert.Equal(2, coal.Count);
+    }
+
+    [Fact]
+    public void Inserter_AutoMode_CoalWithAdditionalComplete_IsRefused()
+    {
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Auto)
+            .Item(0, 0, new FakeItem(FakeMachine.Ids.Coal, 3), Balance.End);
+
+        g.Run(200);
+
+        Assert.Equal(1, g.SlotsAt(2, 0)!.Additional[FakeMachine.Ids.Coal].Count);
+        Assert.Null(g.SlotsAt(2, 0)!.Main);
+        Assert.Equal(2, g.BeltAt(0, 0).Slot.Item!.Count);
+    }
+
+    [Fact]
+    public void Inserter_StackTier_InsertsOnlyWhatMainIsMissing()
+    {
+        var ore = new FakeItem(FakeMachine.Ids.CopperOre, 8);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Main, TransferTier.Stack).Item(0, 0, ore, Balance.End);
+
+        g.Run(1);
+
+        Assert.Equal(5, g.SlotsAt(2, 0)!.Main!.Count);
+        Assert.Equal(3, ore.Count);
+    }
+
+    [Fact]
+    public void Inserter_StackTier_WholeStackThatFits_IsStoredAsSameInstance()
+    {
+        var ore = new FakeItem(FakeMachine.Ids.CopperOre, 5);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Main, TransferTier.Stack).Item(0, 0, ore, Balance.End);
+
+        g.Run(1);
+
+        Assert.Same(ore, g.SlotsAt(2, 0)!.Main);
+        Assert.True(g.BeltAt(0, 0).Slot.IsEmpty);
+    }
+
+    [Fact]
+    public void Inserter_MainWithCopper_AcceptsOnlyCopperUntilComplete_RefusesIron()
+    {
+        var iron = new FakeItem(FakeMachine.Ids.IronOre, 5);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Main)
+            .Item(0, 0, new FakeItem(FakeMachine.Ids.CopperOre, 2), Balance.End)
+            .Item(-1, 0, iron, Balance.End);
+
+        g.Run(400);
+
+        VirtualSlots slots = g.SlotsAt(2, 0)!;
+        Assert.Equal(FakeMachine.Ids.CopperOre, slots.Main!.QualifiedItemId);
+        Assert.Equal(2, slots.Main.Count);
+        Assert.Same(iron, g.BeltAt(0, 0).Slot.Item);
+        Assert.Equal(5, iron.Count);
+    }
+
+    [Fact]
+    public void Inserter_Crystalarium_AcceptsFirstGem_ThenRefusesWhileLoaded()
+    {
+        var machine = FakeMachine.Crystalarium(processingTicks: 50);
+        var gems = new FakeItem(FakeMachine.Ids.Diamond, 3, category: FakeMachine.Ids.GemCategory);
+        var g = MachineLine(machine, InserterSlotMode.Auto).Item(0, 0, gems, Balance.End);
+
+        g.Run(1);
+        Assert.Single(machine.Starts);
+        Assert.True(machine.HasLoadedInput);
+        Assert.Null(g.SlotsAt(2, 0)); // o slot está vazio, mas o Cristalário está carregado
+
+        g.Run(300);
+
+        Assert.Single(machine.Starts);
+        Assert.Equal(2, gems.Count);
+        Assert.Null(g.SlotsAt(2, 0));
+
+        // Coletar o produto faz o Cristalário recomeçar sozinho, e ele continua recusando gemas.
+        machine.TakeOutput(int.MaxValue);
+        g.Run(300);
+        Assert.Single(machine.Starts);
+        Assert.Equal(2, gems.Count);
+    }
+
+    [Fact]
+    public void Inserter_Crystalarium_RefusesSecondGemWhileFirstIsInSlot()
+    {
+        // Ocupado (com produto guardado), o Cristalário não inicia; o slot guarda a gema e recusa outra.
+        var machine = FakeMachine.Crystalarium();
+        machine.Output = new FakeItem(FakeMachine.Ids.Diamond, 1, category: FakeMachine.Ids.GemCategory);
+        var gems = new FakeItem(FakeMachine.Ids.Diamond, 3, category: FakeMachine.Ids.GemCategory);
+        var g = MachineLine(machine, InserterSlotMode.Main).Item(0, 0, gems, Balance.End);
+
+        g.Run(200);
+
+        Assert.Equal(1, g.SlotsAt(2, 0)!.Main!.Count);
+        Assert.Equal(2, gems.Count);
+        Assert.Empty(machine.Starts);
+    }
+
+    [Fact]
+    public void Inserter_MachineDoesNotAcceptItem_InsertsNothing()
+    {
+        var wood = new FakeItem("(O)388", 5);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Auto).Item(0, 0, wood, Balance.End);
+
+        g.Run(200);
+
+        Assert.Equal(5, wood.Count);
+        Assert.Null(g.SlotsAt(2, 0));
     }
 }

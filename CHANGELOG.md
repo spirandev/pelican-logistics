@@ -19,3 +19,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Mod: rotação com `R` (direção de colocação e bloco sob o cursor) e seta fantasma de colocação.
 - Mod: remover um bloco solta no chão os itens que ele carregava.
 - Mod: comandos de console `pl_give` e `pl_dump`.
+- Core: slots virtuais das máquinas (Principal e Adicional), guardados por máquina na grade (`MachineSlotStore`).
+- Core: Inseridor abastece máquinas nos modos Automático, Principal ou Adicional, inserindo só o que falta; regra do Cristalário (só carrega quando vazio).
+- Core: máquina acionada quando os slots estão completos e ela está ociosa; o que ela não consumir continua nos slots.
+- Core: Extrator retira de máquinas: Produto (padrão), Principal ou Adicional.
+- Mod: máquinas de `Data/Machines` como destino e origem (`MachineEndpoint`), sem usar o inventário do jogador; Covo e Barril de carvalho ficam de fora.
+- Mod: quebrar uma máquina solta no chão os itens dos slots virtuais.
+- Mod: interface base de configuração (`ConfigMenu` + `CycleRow`) e interfaces do Extrator ("Retirar de") e do Inseridor ("Colocar em"), abertas com o botão de ação.
+- Mod: comando de console `pl_inspect` (bloco e slots virtuais sob o cursor).

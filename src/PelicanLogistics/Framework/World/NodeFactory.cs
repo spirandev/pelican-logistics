@@ -18,23 +18,60 @@ internal static class NodeFactory
         return obj.ItemId switch
         {
             ItemIds.Belt => new BeltNode(pos, facing, BeltTier.Basic),
-            ItemIds.Extractor => new ExtractorNode(pos, facing, TransferTier.Single),
-            ItemIds.Inserter => new InserterNode(pos, facing, TransferTier.Single),
+            ItemIds.Extractor => new ExtractorNode(pos, facing, TransferTier.Single) { Source = ReadExtractorSource(obj) },
+            ItemIds.Inserter => new InserterNode(pos, facing, TransferTier.Single) { SlotMode = ReadInserterSlotMode(obj) },
             _ => null,
         };
     }
 
     public static Direction ReadFacing(SObject obj)
     {
-        return obj.modData.TryGetValue(ModDataKeys.Facing, out string? raw)
-            && Enum.TryParse(raw, out Direction facing)
-            && Enum.IsDefined(facing)
-                ? facing
-                : DefaultFacing;
+        return ReadEnum(obj, ModDataKeys.Facing, DefaultFacing);
     }
 
     public static void WriteFacing(SObject obj, Direction facing)
     {
         obj.modData[ModDataKeys.Facing] = facing.ToString();
+    }
+
+    public static ExtractorSource ReadExtractorSource(SObject obj)
+    {
+        return ReadEnum(obj, ModDataKeys.ExtractorSource, ExtractorSource.Product);
+    }
+
+    public static void WriteExtractorSource(SObject obj, ExtractorSource source)
+    {
+        obj.modData[ModDataKeys.ExtractorSource] = source.ToString();
+    }
+
+    public static InserterSlotMode ReadInserterSlotMode(SObject obj)
+    {
+        return ReadEnum(obj, ModDataKeys.InserterSlotMode, InserterSlotMode.Auto);
+    }
+
+    public static void WriteInserterSlotMode(SObject obj, InserterSlotMode mode)
+    {
+        obj.modData[ModDataKeys.InserterSlotMode] = mode.ToString();
+    }
+
+    /// <summary>
+    /// Apaga a configuração do bloco. Ao colocar, o jogo copia o <c>modData</c> do item segurado (<c>getOne</c>),
+    /// então um bloco recolhido e colocado de novo traria a configuração antiga.
+    /// </summary>
+    public static void ResetConfig(SObject obj)
+    {
+        foreach (string key in ModDataKeys.Config)
+            obj.modData.Remove(key);
+    }
+
+    /// <summary>Lê um enum gravado pelo nome; valor ausente ou inválido → 'fallback'.</summary>
+    private static TEnum ReadEnum<TEnum>(SObject obj, string key, TEnum fallback)
+        where TEnum : struct, Enum
+    {
+        return obj.modData.TryGetValue(key, out string? raw)
+            && Enum.TryParse(raw, out TEnum value)
+            && Enum.IsDefined(value)
+                ? value
+                : fallback;
     }
 }

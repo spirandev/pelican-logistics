@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using PelicanLogistics.Core.Endpoints;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
+using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
 
 namespace PelicanLogistics.Core.Simulation;
@@ -17,6 +18,9 @@ public sealed class LogisticsGrid
     public IEnumerable<LogisticsNode> Nodes => this.nodes.Values;
 
     public int Count => this.nodes.Count;
+
+    /// <summary>Slots virtuais das máquinas abastecidas pelos Inseridores deste local.</summary>
+    public MachineSlotStore MachineSlots { get; } = new();
 
     /// <summary>Ordem em que os nós são atualizados a cada tick (ver <see cref="Topology"/>).</summary>
     public IReadOnlyList<LogisticsNode> ProcessingOrder
@@ -69,12 +73,40 @@ public sealed class LogisticsGrid
         this.dirty = true;
     }
 
-    /// <summary>Um tick de lógica: atualiza todos os nós, de jusante para montante.</summary>
+    /// <summary>Um tick de lógica: atualiza todos os nós, de jusante para montante, e depois aciona as máquinas.</summary>
     public void Tick(IEndpointProvider endpoints)
     {
         var ctx = new TickContext(this, endpoints);
         foreach (LogisticsNode node in this.ProcessingOrder)
             node.Update(ctx);
+
+        this.StartMachines(endpoints);
+        this.MachineSlots.RemoveEmpty();
+    }
+
+    /// <summary>
+    /// Aciona as máquinas ociosas com os slots completos. Slots completos de uma máquina ocupada esperam o
+    /// produto ser retirado. Se a máquina não está mais lá, o adaptador trata a remoção.
+    /// </summary>
+    private void StartMachines(IEndpointProvider endpoints)
+    {
+        foreach ((TilePos pos, VirtualSlots slots) in this.MachineSlots.Entries)
+        {
+            if (endpoints.GetEndpoint(pos) is not IMachineEndpoint machine)
+                continue;
+
+            IReadOnlyList<AdditionalRequirement> reqs = machine.AdditionalRequirements;
+            if (!slots.IsComplete(reqs) || !machine.IsIdle)
+                continue;
+
+            var additional = new List<ILogisticsItem>(reqs.Count);
+            foreach (AdditionalRequirement req in reqs)
+                additional.Add(slots.Additional[req.Id]);
+
+            // O que a máquina não consumiu continua nos slots: o Core nunca perde itens.
+            if (machine.TryStart(slots.Main!, additional))
+                slots.RemoveConsumed();
+        }
     }
 
     private void EnsureTopology()

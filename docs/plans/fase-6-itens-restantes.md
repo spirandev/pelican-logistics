@@ -1,10 +1,10 @@
-# Fase 5: Itens restantes
+# Fase 6: Itens restantes
 
-> Leia antes: [`00-plano-mestre.md`](00-plano-mestre.md) (obrigatório), [`README.md`](../../README.md) (seções "Transporte", "Extratores e Inseridores", "Regulador"), [`STATUS.md`](STATUS.md).
+> Leia antes: [`00-plano-mestre.md`](00-plano-mestre.md) (obrigatório), [`README.md`](../../README.md) (seções "Transporte", "Inseridores", "Regulador"), [`STATUS.md`](STATUS.md).
 
-- **Branch:** `fase-5-itens-restantes`
-- **PR:** `Fase 5: Itens restantes`
-- **Depende de:** Fase 4 mesclada.
+- **Branch:** `fase-6-itens-restantes`
+- **PR:** `Fase 6: Itens restantes`
+- **Depende de:** Fase 5 mesclada.
 
 ## Objetivo
 
@@ -14,8 +14,6 @@ Completar o catálogo da alpha:
 |---|---|---|
 | Esteira Rápida | Bloco | `BeltFast` |
 | Esteira Expressa | Bloco | `BeltExpress` |
-| Extrator de Pilha | Bloco | `ExtractorStack` |
-| Extrator Configurável | Bloco | `ExtractorConfigurable` |
 | Inseridor de Pilha | Bloco | `InserterStack` |
 | Inseridor Configurável | Bloco | `InserterConfigurable` |
 | Esteira Subterrânea | Bloco | `UndergroundBelt` |
@@ -24,7 +22,7 @@ Completar o catálogo da alpha:
 
 ## Fora de escopo
 
-Dicas ao passar o mouse e revisão geral das interfaces (Fase 6).
+Dicas ao passar o mouse e revisão geral das interfaces (Fase 7).
 
 ---
 
@@ -34,9 +32,10 @@ Dicas ao passar o mouse e revisão geral das interfaces (Fase 6).
 
 Os enums `BeltTier` e `TransferTier` já existem desde a Fase 1, e a lógica de quantidade por tier também. Nesta fase:
 - garanta testes de velocidade das três esteiras (`Basic` 60 ticks/tile, `Fast` 30, `Express` 15);
-- `Stack`: Extrator retira a pilha inteira de um slot do baú; Inseridor insere tudo que chega (até o que couber);
-- `Configurable`: `ConfiguredAmount` entre 1 e `Balance.MaxConfigurableAmount` (valores fora disso são corrigidos); Extrator junta de vários slots até a quantidade (limitado a `MaxStack`); Inseridor insere até a quantidade.
-- **Máquinas:** o Inseridor de Pilha/Configurável continua inserindo **só o que falta** no slot (Fase 2).
+- `Stack`: o Inseridor pega a pilha inteira (de um slot do baú, ou a que chegou pela esteira), limitada ao que cabe no destino;
+- `Configurable`: `ConfiguredAmount` entre 1 e `Balance.MaxConfigurableAmount` (valores fora disso são corrigidos); de um baú, junta de vários slots até a quantidade (limitado a `MaxStack` e ao que cabe no destino).
+- **Máquinas:** o Inseridor de Pilha/Configurável continua pegando **só o que falta** no slot (Fases 2 e 3).
+- A lógica por tier já existe no `InserterNode` desde a Fase 3; aqui o foco são os itens novos, os testes e a interface.
 
 ### A2. Ponte
 
@@ -65,7 +64,7 @@ public sealed class RegulatorRule
 - `General`: `Max(0, GeneralLimit - chest.CountTotal())`.
 - `PerItem`: se houver limite para `item.QualifiedItemId` → `Max(0, limite - chest.CountById(id))`; senão → `int.MaxValue`.
 - `InserterNode.Regulator` (`RegulatorRule?`): presente quando `Accessory == Regulator`. Só `InserterNode` aceita o Regulador.
-- No `Accept` do Inseridor com destino **baú**: `max = Min(max, Regulator.AllowedAmount(item, chest))`. Com destino **máquina**, o Regulador é ignorado (plano mestre D8).
+- No `Fits` do Inseridor com destino **baú** (o cálculo de quanto pegar, Fase 3): `Min(espaço, Regulator.AllowedAmount(item, chest))`. Aplique o mesmo limite na entrega, para o caso de o baú mudar durante a ida. Com destino **máquina**, o Regulador é ignorado (plano mestre D8).
 - `RegulatorRuleSerializer` (JSON) com o mesmo cuidado do `FilterRuleSerializer`.
 
 ### A4. Esteira Subterrânea
@@ -92,8 +91,8 @@ public enum UndergroundRole { Entrance, Exit }
 - **Entrada:** recebe só por trás (sem curva), quando o `Slot` está vazio. Avança com `Balance.UndergroundSpeed`; no fim, passa para `Tunnel[0]` (ou direto para o `Slot` da saída se o túnel tiver tamanho 0). Os slots do túnel avançam e passam adiante como uma fila. Sem par → o item para no fim do `Slot` da entrada.
 - **Saída:** recebe **só** do seu par. Avança e, no fim, entrega para o nó à frente como uma esteira (`ProvidesTo` = tile à frente).
 - O que estiver no vão (cercas, caminhos, outras esteiras, outros blocos) **não interfere**.
-- A saída é provedor para curvas e entrada válida de Divisor; a entrada é saída válida de Extrator e de Divisor (atualize `IsValidOutput` e as regras de portas da Fase 4).
-- Implemente `CanReceiveFrom`/`CanAccept` na entrada (por trás, `Slot` vazio) e `GetOutgoingSlot` na saída (o `Slot` dela), para o Extrator e o Divisor funcionarem com a Subterrânea.
+- A saída é provedor para curvas e entrada válida de Divisor; a entrada é destino válido do Inseridor e saída válida do Divisor (atualize as regras de portas da Fase 5).
+- Implemente `CanReceiveFrom`/`CanAccept` na entrada (por trás, `Slot` vazio) e `GetOutgoingSlot` na saída (o `Slot` dela), para o Inseridor e o Divisor funcionarem com a Subterrânea.
 - `Downstream` da entrada = a saída; da saída = o nó à frente.
 - Remover a entrada devolve o item do `Slot` **e de todo o túnel**.
 
@@ -101,15 +100,15 @@ public enum UndergroundRole { Entrance, Exit }
 
 **Tiers**
 1. Velocidades das três esteiras.
-2. Extrator de Pilha retira a pilha inteira de um slot; Inseridor de Pilha insere a pilha inteira num baú.
+2. Inseridor de Pilha: baú → esteira retira a pilha inteira de um slot; esteira → baú insere a pilha inteira.
 3. Inseridor de Pilha num baú quase cheio: insere o que cabe, o resto fica na esteira.
-4. Extrator Configurável com 15: junta 10 + 5 de dois slots numa pilha de 15.
+4. Inseridor Configurável com 15, baú → esteira: junta 10 + 5 de dois slots numa pilha de 15.
 5. Inseridor Configurável com 5: uma pilha de 12 entra em 3 operações (5, 5, 2).
 6. `ConfiguredAmount` 0 ou 5000 é corrigido para 1 ou 999.
 7. Inseridor de Pilha na fornalha: só 5 minérios entram no Principal.
 
 **Ponte**
-8. `TrySetAccessory(Bridge)` funciona na esteira (todas as velocidades); falha no Filtro, no Divisor, no Extrator e no Inseridor.
+8. `TrySetAccessory(Bridge)` funciona na esteira (todas as velocidades); falha no Filtro, no Divisor e no Inseridor.
 9. Segundo acessório no mesmo tile falha.
 10. A ponte não muda o fluxo; `Remove` da esteira devolve a ponte e o item.
 
@@ -128,7 +127,7 @@ public enum UndergroundRole { Entrance, Exit }
 20. Túnel cheio: entrada bloqueia; ao liberar a saída, a fila anda.
 21. Remover a entrada devolve os itens do túnel.
 22. Duas subterrâneas paralelas não interferem.
-23. Persistência: itens no túnel sobrevivem à ida e volta (Fase 3).
+23. Persistência: itens no túnel sobrevivem à ida e volta (Fase 4).
 24. **Conservação** num cenário com subterrânea, Divisor e Regulador.
 
 ---
@@ -138,7 +137,7 @@ public enum UndergroundRole { Entrance, Exit }
 ### B1. Registro dos itens
 
 - `ItemIds` com todos os IDs acima; `IsOurBigCraftable` e um novo `IsOurAccessory`.
-- `Data/BigCraftables` para os 7 blocos; `Data/Objects` para Ponte e Regulador (`ObjectData`: `Type = "Basic"`, `Category = 0`, `Price = 0`, textura `Mods/spirandev.PelicanLogistics/Objects`). Eles **não** devem ser colocáveis pelo jogo; confirme em [Modding:Items](https://stardewvalleywiki.com/Modding:Items) que esse tipo/categoria não é colocável e, se for, escolha outro e registre no PR.
+- `Data/BigCraftables` para os 5 blocos; `Data/Objects` para Ponte e Regulador (`ObjectData`: `Type = "Basic"`, `Category = 0`, `Price = 0`, textura `Mods/spirandev.PelicanLogistics/Objects`). Eles **não** devem ser colocáveis pelo jogo; confirme em [Modding:Items](https://stardewvalleywiki.com/Modding:Items) que esse tipo/categoria não é colocável e, se for, escolha outro e registre no PR.
 - Loja do Clint (0g) para todos.
 - Placeholders (README): esteiras com 2 e 3 setas em cinza médio/escuro; versões de Pilha/Configurável com 2/3 pontos; Subterrânea cinza escuro com círculo **branco** (entrada) ou **preto** (saída); Ponte marrom (faixa horizontal); Regulador amarelo (quadrado pequeno).
 - `NodeFactory`: cria todos os tiers; lê `ConfiguredAmount`, `UndergroundRole`, `Accessory`, `RegulatorRule` do `modData`.
@@ -165,7 +164,7 @@ O jogador **passa por cima** de uma esteira com ponte. O jogo decide colisão de
 ### B5. Interfaces
 
 - Nova linha `NumberRow`: rótulo + valor + botões `−10`, `−1`, `+1`, `+10` + campo digitável (`TextBox` aceitando só dígitos); valor limitado ao intervalo da linha.
-- **Extrator Configurável / Inseridor Configurável:** a interface ganha `NumberRow` "Quantidade por vez" (1–999).
+- **Inseridor Configurável:** a interface ganha `NumberRow` "Quantidade por vez" (1–999).
 - **Inseridor com Regulador** (plano mestre D13): a interface do Inseridor ganha uma seção "Regulador", visível só quando há regulador:
   - `CycleRow` Modo: Geral / Por item;
   - Geral: `NumberRow` Limite (0–99.999);
@@ -174,7 +173,7 @@ O jogador **passa por cima** de uma esteira com ponte. O jogo decide colisão de
 
 ### B6. i18n
 
-Nomes e descrições dos 9 itens, rótulos das novas interfaces, as duas mensagens de erro.
+Nomes e descrições dos 7 itens, rótulos das novas interfaces, as duas mensagens de erro.
 
 ---
 
@@ -198,8 +197,8 @@ Nomes e descrições dos 9 itens, rótulos das novas interfaces, as duas mensage
 ## Verificação local (usuário)
 
 - [ ] Esteira Rápida e Expressa: visivelmente 2× e 4× mais rápidas que a básica.
-- [ ] Extrator de Pilha: a pilha inteira sai do baú de uma vez. Inseridor de Pilha: a pilha inteira entra.
-- [ ] Extrator Configurável com 5: sai de 5 em 5. A interface aceita digitar e usar os botões ±.
+- [ ] Inseridor de Pilha: a pilha inteira sai do baú de uma vez e a pilha inteira entra no baú de destino.
+- [ ] Inseridor Configurável com 5: sai de 5 em 5. A interface aceita digitar e usar os botões ±.
 - [ ] **Ponte:** segurando a Ponte e clicando numa esteira, a ponte aparece e o jogador **passa por cima**; os itens continuam andando por baixo.
 - [ ] Ponte num Filtro ou Divisor: mensagem de erro, nada é gasto.
 - [ ] Clicar com a mão livre numa esteira com ponte: a ponte volta ao inventário.

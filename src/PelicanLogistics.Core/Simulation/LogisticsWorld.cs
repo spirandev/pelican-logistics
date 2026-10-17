@@ -33,14 +33,15 @@ public sealed class LogisticsWorld
     }
 
     /// <summary>
-    /// Um tick em todas as grades com nós. 'endpointsFor' devolve os endpoints do local, ou null se o
+    /// Um tick em todas as grades com nós ou com itens nos slots virtuais (a máquina ainda pode ser acionada
+    /// depois que o Inseridor for removido). 'endpointsFor' devolve os endpoints do local, ou null se o
     /// local estiver indisponível (a grade é pulada nesse tick).
     /// </summary>
     public void Tick(Func<string, IEndpointProvider?> endpointsFor)
     {
         foreach ((string key, LogisticsGrid grid) in this.grids)
         {
-            if (grid.Count == 0)
+            if (grid.Count == 0 && grid.MachineSlots.Count == 0)
                 continue;
 
             IEndpointProvider? endpoints = endpointsFor(key);

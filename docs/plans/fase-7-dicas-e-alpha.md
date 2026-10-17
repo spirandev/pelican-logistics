@@ -1,10 +1,10 @@
-# Fase 6: Dicas ao passar o mouse e alpha 0.1.0
+# Fase 7: Dicas ao passar o mouse e alpha 0.1.0
 
 > Leia antes: [`00-plano-mestre.md`](00-plano-mestre.md) (obrigatório), [`README.md`](../../README.md) (seção "Dicas ao passar o mouse"), [`STATUS.md`](STATUS.md).
 
-- **Branch:** `fase-6-dicas-e-alpha`
-- **PR:** `Fase 6: Dicas e alpha 0.1.0`
-- **Depende de:** Fase 5 mesclada.
+- **Branch:** `fase-7-dicas-e-alpha`
+- **PR:** `Fase 7: Dicas e alpha 0.1.0`
+- **Depende de:** Fase 6 mesclada.
 
 ## Objetivo
 
@@ -46,8 +46,7 @@ Conteúdo (as chaves são do i18n):
 | Filtro Comum | "Filtro Comum" | item configurado ou "nenhum item"; item em trânsito |
 | Filtro Completo | "Filtro Completo" | modo; resumo ("3 itens, 2 categorias, qualidade ouro"); item em trânsito |
 | Divisor | "Divisor" | número de entradas e saídas; item em trânsito; "Sem destino" se bloqueado |
-| Extrator | nome do tier | origem (Produto/Principal/Adicional); quantidade por vez se Configurável |
-| Inseridor | nome do tier | slot (Automático/Principal/Adicional); quantidade se Configurável; regulador e limite se houver |
+| Inseridor | nome do tier | "Retirar de" e "Colocar em"; item na mão; quantidade se Configurável; regulador e limite se houver |
 | Subterrânea | "Entrada"/"Saída" | pareada ou "Sem par"; itens no túnel (entrada) |
 | Máquina com slots virtuais | nome da máquina (o adaptador preenche) | `Principal: 3/5 Minério de cobre`; uma linha por adicional `Adicional: 1/1 Carvão` |
 
@@ -89,7 +88,7 @@ Um teste que monta **10.000 nós** (linhas longas, curvas, Divisores) e roda **6
 
 ### B3. Revisão das interfaces
 
-Passe por todas as interfaces (Extrator, Inseridor + Regulador, Filtros) e garanta:
+Passe por todas as interfaces (Inseridor + Regulador, Filtros) e garanta:
 - mesmo estilo de caixa, título, espaçamento e botão OK;
 - todas fecham com `Esc` e com a tecla de menu;
 - nenhum texto fixo no código: tudo no `i18n/default.json`;
@@ -144,7 +143,7 @@ Liste no PR tudo que foi corrigido.
 
 - [ ] Passar o mouse numa esteira com itens mostra `Madeira ×50`; numa vazia mostra "vazia"; numa travada mostra "Bloqueada".
 - [ ] Passar o mouse numa fornalha abastecida mostra `Principal: 3/5 Minério de cobre` e `Adicional: 1/1 Carvão`.
-- [ ] Dicas de Extrator, Inseridor (com e sem Regulador), Filtros, Divisor e Subterrânea mostram as informações da tabela.
+- [ ] Dicas de Inseridor (com e sem Regulador), Filtros, Divisor e Subterrânea mostram as informações da tabela.
 - [ ] Nenhuma dica aparece com um menu aberto.
 - [ ] `pl_debug` mostra setas de entrada, bloqueios em vermelho e portas do Divisor.
 - [ ] Todas as interfaces têm o mesmo estilo, fecham com Esc e cabem na tela.

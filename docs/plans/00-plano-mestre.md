@@ -10,7 +10,7 @@ Este documento é o ponto de partida para **qualquer sessão de implementação*
 
 ## 1. Objetivo da alpha
 
-Construir uma versão **jogável apenas para testar a lógica** do mod: esteiras, extratores, inseridores, máquinas, filtros, divisor, ponte, regulador e esteira subterrânea, conforme o README. Na alpha:
+Construir uma versão **jogável apenas para testar a lógica** do mod: esteiras, inseridores, máquinas, filtros, divisor, ponte, regulador e esteira subterrânea, conforme o README. Na alpha:
 
 - não há sprites: tudo é desenhado com **formas geométricas e cores** (placeholders);
 - tudo fica **liberado e de graça** na loja do Clint;
@@ -28,10 +28,13 @@ Cada fase é executada **do início ao fim em uma única sessão**, numa branch 
 | 0 | [`fase-0-estrutura.md`](fase-0-estrutura.md) | Solução, projetos, manifest, testes, CI, documentação de desenvolvimento | (nada) |
 | 1 | [`fase-1-base.md`](fase-1-base.md) | Esteira (reta/curva), Extrator e Inseridor básicos, baú → baú, renderização, rotação, loja | 0 |
 | 2 | [`fase-2-maquinas.md`](fase-2-maquinas.md) | Slots virtuais, Inseridor/Extrator com máquinas, interfaces de slot, Cristalário | 1 |
-| 3 | [`fase-3-persistencia.md`](fase-3-persistencia.md) | Itens em trânsito e slots virtuais sobrevivem ao salvar/carregar | 2 |
-| 4 | [`fase-4-roteamento.md`](fase-4-roteamento.md) | Filtro Comum, Filtro Completo, filtro acoplado, Divisor | 3 |
-| 5 | [`fase-5-itens-restantes.md`](fase-5-itens-restantes.md) | Ponte, Esteiras Rápida/Expressa, versões de Pilha/Configurável, Esteira Subterrânea, Regulador | 4 |
-| 6 | [`fase-6-dicas-e-alpha.md`](fase-6-dicas-e-alpha.md) | Dicas ao passar o mouse, revisão das interfaces, empacotamento da alpha 0.1.0 | 5 |
+| 3 | [`fase-3-inseridor-unico.md`](fase-3-inseridor-unico.md) | Extrator e Inseridor viram um bloco só (Inseridor): entradas laterais, entrega direta, item na mão e braço | 2 |
+| 4 | [`fase-4-persistencia.md`](fase-4-persistencia.md) | Itens em trânsito, itens na mão e slots virtuais sobrevivem ao salvar/carregar | 3 |
+| 5 | [`fase-5-roteamento.md`](fase-5-roteamento.md) | Filtro Comum, Filtro Completo, filtro acoplado, Divisor | 4 |
+| 6 | [`fase-6-itens-restantes.md`](fase-6-itens-restantes.md) | Ponte, Esteiras Rápida/Expressa, Inseridores de Pilha/Configurável, Esteira Subterrânea, Regulador | 5 |
+| 7 | [`fase-7-dicas-e-alpha.md`](fase-7-dicas-e-alpha.md) | Dicas ao passar o mouse, revisão das interfaces, empacotamento da alpha 0.1.0 | 6 |
+
+As fases 0 a 2 foram feitas com dois blocos separados (Extrator e Inseridor); seus planos ficam como registro histórico. A partir da Fase 3 existe só o Inseridor (README "Inseridores").
 
 ---
 
@@ -86,7 +89,7 @@ Namespaces e responsabilidades (criados aos poucos pelas fases):
 | `Geometry` | `Direction` (North, East, South, West, nessa ordem = **ordem horária**), `TilePos`, extensões (`Opposite`, `Clockwise`, `ToOffset`) |
 | `Items` | `ILogisticsItem` (abstração de um item do jogo) |
 | `Endpoints` | `IChestEndpoint`, `IMachineEndpoint`, `IEndpointProvider` (o que está ao redor das esteiras) |
-| `Nodes` | `LogisticsNode` (base), `BeltNode`, `ExtractorNode`, `InserterNode`, `FilterNode`, `SplitterNode`, `UndergroundBeltNode` |
+| `Nodes` | `LogisticsNode` (base), `BeltNode`, `InserterNode`, `FilterNode`, `SplitterNode`, `UndergroundBeltNode` |
 | `Simulation` | `LogisticsGrid` (um por local do jogo), `LogisticsWorld` (todos os locais), `Topology` (formas, conexões e ordem de processamento), `Balance` (constantes) |
 | `Filters` | `IFilterRule`, `CommonFilterRule`, `CompleteFilterRule` |
 | `Machines` | `VirtualSlots`, requisitos de máquina |
@@ -115,11 +118,11 @@ Regras do Core:
 
 ### 4.4 Como os blocos existem no jogo
 
-- Todo **bloco** (esteiras, extratores, inseridores, filtros, divisor, esteira subterrânea) é um **Big Craftable** registrado em `Data/BigCraftables`, com ID qualificado `(BC)spirandev.PelicanLogistics_<Nome>`. Isso dá de graça: colocação no mapa, colisão (o jogador não passa), remoção com ferramenta, salvamento do objeto e do seu `modData`.
+- Todo **bloco** (esteiras, inseridores, filtros, divisor, esteira subterrânea) é um **Big Craftable** registrado em `Data/BigCraftables`, com ID qualificado `(BC)spirandev.PelicanLogistics_<Nome>`. Isso dá de graça: colocação no mapa, colisão (o jogador não passa), remoção com ferramenta, salvamento do objeto e do seu `modData`.
 - Os **acessórios** (Ponte e Regulador) são **objetos comuns** registrados em `Data/Objects` (`(O)spirandev.PelicanLogistics_<Nome>`), **não colocáveis** pelo jogo. O mod intercepta o clique e aplica o acessório sobre o bloco.
 - A **configuração** de cada bloco (direção, filtro, slot, quantidade, acessório) fica no `modData` do próprio objeto, com chaves prefixadas por `spirandev.PelicanLogistics/`. É salva automaticamente pelo jogo.
-- O **estado em tempo de execução** (itens em trânsito, slots virtuais) é salvo pela Fase 3.
-- Os blocos **não são desenhados pelo jogo**: um patch Harmony em `Object.draw` desenha o placeholder (girado conforme a direção) e o item em trânsito.
+- O **estado em tempo de execução** (itens em trânsito, itens na mão dos Inseridores, slots virtuais) é salvo pela Fase 4.
+- Os blocos **não são desenhados pelo jogo**: um patch Harmony em `Object.draw` desenha o placeholder (girado conforme a direção), o braço do Inseridor e o item em trânsito.
 
 ### 4.5 Simulação
 
@@ -138,7 +141,8 @@ Regras do Core:
 | `BeltSpeedFast` | 20 | 2 tiles/s |
 | `BeltSpeedExpress` | 40 | 4 tiles/s |
 | `FilterSpeed` / `SplitterSpeed` / `UndergroundSpeed` | 40 | Velocidade máxima |
-| `TransferCooldownTicks` | 30 | Extrator e Inseridor: 1 operação a cada 0,5 s (todas as versões) |
+| `InserterSpeed` | 40 | Progresso da mão do Inseridor por tick: a ida da origem ao destino leva 15 ticks |
+| `InserterReturnTicks` | 15 | Ticks da volta do braço, vazio. Ida + volta = 30 ticks = 1 operação a cada 0,5 s (todas as versões) |
 | `UndergroundMaxGap` | 5 | Tiles que a Esteira Subterrânea atravessa |
 | `MaxConfigurableAmount` | 999 | Limite das versões Configuráveis |
 
@@ -153,9 +157,9 @@ O README define o comportamento. Algumas situações não estão cobertas por el
 | # | Situação | Decisão |
 |---|---|---|
 | D1 | Rotação | Tecla configurável (padrão `R`). Segurando um bloco do mod: gira a direção de colocação. Com a mão livre e o cursor sobre um bloco direcional: gira o bloco. Ao segurar um bloco, uma seta fantasma mostra a direção no tile do cursor. |
-| D2 | Direção dos blocos | Esteira, Filtro, Subterrânea: a direção é o sentido do fluxo. **Extrator**: a origem (baú/máquina) fica **atrás** e a saída **na frente**. **Inseridor**: a esteira de entrada fica **atrás** e o destino **na frente**. |
-| D3 | Saídas do Extrator | O Extrator só entrega para Esteira, Filtro ou entrada de Esteira Subterrânea à sua frente. |
-| D4 | Portas do Divisor | Entradas e saídas do Divisor só podem ser Esteira, Filtro ou Esteira Subterrânea. Divisor encostado em Divisor, Extrator ou Inseridor não se conecta. |
+| D2 | Direção dos blocos | Esteira, Filtro, Subterrânea: a direção é o sentido do fluxo. **Inseridor**: a direção aponta para o **destino** (frente). Baú ou máquina de origem só **atrás**; esteiras (e Filtro, saída de Subterrânea) que terminam no Inseridor podem chegar por trás ou pelas laterais. |
+| D3 | Destino do Inseridor | Baú, máquina, ou Esteira/Filtro/entrada de Subterrânea que recebe pelo lado virado para o Inseridor. Inseridor e Divisor à frente não são destino. |
+| D4 | Portas do Divisor | Entradas e saídas do Divisor só podem ser Esteira, Filtro ou Esteira Subterrânea. Divisor encostado em Divisor ou Inseridor não se conecta. |
 | D5 | Divisor puxa | O Divisor **puxa** os itens das entradas (em ordem horária), em vez de as entradas empurrarem. Isso garante o rodízio justo das entradas. |
 | D6 | Filtro Comum e qualidade | O Filtro Comum compara apenas o ID do item; **qualquer qualidade** passa. Qualidade é critério do Filtro Completo. |
 | D7 | Regulador por item | Itens sem limite definido na lista **não são limitados**. |
@@ -167,6 +171,8 @@ O README define o comportamento. Algumas situações não estão cobertas por el
 | D13 | Interface do Inseridor + Regulador | O Regulador é configurado dentro da interface do Inseridor, numa seção própria que só aparece quando há regulador. |
 | D14 | Textos | Identificadores em inglês; comentários e documentação em pt-BR; textos do jogo em `i18n/default.json` (pt-BR). |
 | D15 | Loja | O Clint (loja `Blacksmith`) vende todos os itens do mod por 0g, estoque ilimitado, quando `UnlockAll` = `true` (padrão na alpha). Há também o comando de console `pl_give` que coloca um de cada no inventário. |
+| D16 | Inseridor puxa | O Inseridor **puxa** das entradas (como o Divisor, D5): a esteira que termina nele fica parada no fim (`Blocked`) até ele pegar. Várias entradas → rodízio em ordem horária a partir da última usada. |
+| D17 | Inseridor sem reserva | O Inseridor calcula na hora de pegar quanto cabe no destino, sem reservar espaço. Se o destino encher durante a ida (ex.: outro Inseridor abasteceu o mesmo slot), o item espera na mão até caber. |
 
 ---
 

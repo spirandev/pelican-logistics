@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Xna.Framework;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
+using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Simulation;
 using StardewModdingAPI;
@@ -81,6 +82,8 @@ internal sealed class WorldRegistry
         {
             if (ItemIds.IsOurBlock(obj))
                 this.RemoveNode(location, tile);
+            else
+                this.RemoveMachineSlots(location, tile);
         }
 
         foreach ((Vector2 tile, SObject obj) in e.Added)
@@ -88,9 +91,10 @@ internal sealed class WorldRegistry
             if (!ItemIds.IsOurBlock(obj))
                 continue;
 
-            // Sempre a direção da seta: ao colocar, o jogo copia o modData do item segurado (getOne), então um
-            // bloco recolhido e colocado de novo traria a direção antiga.
+            // Sempre a direção da seta e a configuração padrão: ao colocar, o jogo copia o modData do item
+            // segurado (getOne), então um bloco recolhido e colocado de novo traria a direção e a configuração antigas.
             NodeFactory.WriteFacing(obj, this.placementDirection());
+            NodeFactory.ResetConfig(obj);
             this.TryAddNode(location, tile, obj);
         }
     }
@@ -98,6 +102,12 @@ internal sealed class WorldRegistry
     public LogisticsNode? GetNode(GameLocation location, TilePos pos)
     {
         return this.World.Get(KeyOf(location))?.Get(pos);
+    }
+
+    /// <summary>Slots virtuais da máquina no tile, ou null se não há nada guardado.</summary>
+    public VirtualSlots? GetMachineSlots(GameLocation location, TilePos pos)
+    {
+        return this.World.Get(KeyOf(location))?.MachineSlots.Get(pos);
     }
 
     /// <summary>Gira o nó no sentido horário e grava a direção no <c>modData</c>. Retorna false se não há nó.</summary>
@@ -156,13 +166,30 @@ internal sealed class WorldRegistry
             return;
 
         RemovalResult result = grid.Remove(ToTilePos(tile));
-        Vector2 pixel = new(tile.X * Game1.tileSize + (Game1.tileSize / 2), tile.Y * Game1.tileSize + (Game1.tileSize / 2));
-        foreach (ILogisticsItem item in result.Items)
-        {
-            if (item is GameItem gameItem)
-                Game1.createItemDebris(gameItem.Item, pixel, -1, location);
-        }
+        DropItems(location, tile, result.Items);
 
         // Acessórios: Fase 5.
+    }
+
+    /// <summary>Máquina removida: os itens guardados nos slots virtuais caem no chão (README "Slots virtuais").</summary>
+    private void RemoveMachineSlots(GameLocation location, Vector2 tile)
+    {
+        LogisticsGrid? grid = this.World.Get(KeyOf(location));
+        TilePos pos = ToTilePos(tile);
+        if (grid == null || grid.MachineSlots.Get(pos) == null)
+            return;
+
+        DropItems(location, tile, grid.MachineSlots.RemoveMachine(pos));
+    }
+
+    /// <summary>Solta os itens no chão, no centro do tile.</summary>
+    private static void DropItems(GameLocation location, Vector2 tile, IEnumerable<ILogisticsItem> items)
+    {
+        Vector2 pixel = new(tile.X * Game1.tileSize + (Game1.tileSize / 2), tile.Y * Game1.tileSize + (Game1.tileSize / 2));
+        foreach (ILogisticsItem item in items)
+        {
+            if (item is GameItem gameItem && gameItem.Count > 0)
+                Game1.createItemDebris(gameItem.Item, pixel, -1, location);
+        }
     }
 }
