@@ -8,7 +8,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 |---|---|---|---|---|
 | 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
-| 2: Máquinas | Não iniciada | | | |
+| 2: Máquinas | Aguardando teste local | `fase-2-maquinas` | (PR) | |
 | 3: Persistência | Não iniciada | | | |
 | 4: Roteamento | Não iniciada | | | |
 | 5: Itens restantes | Não iniciada | | | |
@@ -56,3 +56,14 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Textos dos comandos de console também ficam no `i18n` (D14).
 - Tiers Stack/Configurable do Extrator e do Inseridor já funcionam no Core (A9/A10), com testes; o adaptador só cria a versão `Single`.
 - `PathMath`: pontas da curva exatas, sem erro de arredondamento.
+
+### Fase 2
+- Branch: o push para `fase-2-maquinas` funcionou nesta sessão, então foi usado o nome do plano (sem o prefixo `claude/`).
+- Consumo pela máquina: em vez de `slots.Clear()` depois de `TryStart` (A6), a máquina diminui o `Count` das pilhas que usou e o Core descarta só as que zeraram. O que a máquina não consumir continua nos slots, para nunca sumir item.
+- Grade sem nenhum bloco, mas com itens nos slots virtuais (o Inseridor foi removido), continua sendo processada: a máquina ainda é acionada quando completar.
+- Adicional: um requisito só recebe itens que empilham com o que já está guardado nele (ex.: mesma qualidade); senão o próximo requisito é tentado.
+- Extrator em máquina: se a frente não aceitar tudo (não deveria acontecer), o resto volta para o slot de onde saiu; no Produto, volta para o produto guardado.
+- `MachineEndpoint`: requisitos adicionais com o mesmo item são somados; os com quantidade 0 são ignorados. Depois de acionar, grava `lastInputItem` (usado pelo Cristalário para recomeçar) e atualiza as estatísticas de carga; a coleta segue o Automate (estatísticas, regra `OutputCollected`, torneira, experiência).
+- Barril de carvalho (`Cask`) também fica de fora, como o Covo: tem lógica própria (envelhecimento, só na adega).
+- Bloco colocado começa com a configuração padrão (Produto / Automático): como na direção (Fase 1), o jogo copiaria o `modData` do item segurado.
+- `pl_inspect` também mostra se a máquina está ociosa, o produto pronto e se ela repete sozinha.
