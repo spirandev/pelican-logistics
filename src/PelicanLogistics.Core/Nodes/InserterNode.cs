@@ -185,7 +185,6 @@ public sealed class InserterNode : LogisticsNode
         };
     }
 
-
     // Origens.
 
     private bool IsInput(Direction side)
