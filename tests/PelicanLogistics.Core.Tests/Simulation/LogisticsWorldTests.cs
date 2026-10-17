@@ -1,5 +1,6 @@
 using PelicanLogistics.Core.Endpoints;
 using PelicanLogistics.Core.Geometry;
+using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Core.Tests.Fakes;
@@ -54,5 +55,23 @@ public class LogisticsWorldTests
         world.Clear();
 
         Assert.Empty(world.Grids);
+    }
+
+    [Fact]
+    public void Tick_GridWithoutNodesButWithMachineSlots_StillStartsMachine()
+    {
+        var world = new LogisticsWorld();
+        LogisticsGrid grid = world.GetOrCreate("Farm");
+        var endpoints = new FakeEndpoints();
+        var keg = FakeMachine.Keg();
+        endpoints.Endpoints[new TilePos(0, 0)] = keg;
+        VirtualSlots slots = grid.MachineSlots.GetOrCreate(new TilePos(0, 0));
+        slots.Main = new FakeItem("(O)613", 1, category: FakeMachine.Ids.FruitCategory);
+        slots.MainRequired = 1;
+
+        world.Tick(_ => endpoints);
+
+        Assert.Single(keg.Starts);
+        Assert.Equal(0, grid.MachineSlots.Count);
     }
 }
