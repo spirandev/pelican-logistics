@@ -127,6 +127,29 @@ public sealed class InserterNode : LogisticsNode
         }
     }
 
+    // Persistência.
+
+    internal override int ExportCooldown()
+    {
+        return this.Cooldown;
+    }
+
+    internal override void ImportCooldown(int ticks)
+    {
+        this.Cooldown = Math.Clamp(ticks, 0, Balance.InserterReturnTicks);
+    }
+
+    /// <summary>Entrada = <see cref="LastInput"/> (-1 = null, senão o valor de <see cref="Direction"/>). Não há saída.</summary>
+    internal override (int Input, int Output) ExportPointers()
+    {
+        return (this.LastInput is { } last ? (int)last : -1, -1);
+    }
+
+    internal override void ImportPointers(int input, int output)
+    {
+        this.LastInput = Enum.IsDefined(typeof(Direction), input) ? (Direction)input : null;
+    }
+
     // Destino (frente).
 
     /// <summary>O que está na frente: um nó tem prioridade sobre o endpoint (um tile tem um objeto só).</summary>
