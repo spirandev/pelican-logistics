@@ -1,0 +1,33 @@
+# EditorConfig: https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,csproj,props,targets,xml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.sln]
+indent_style = tab
+
+[*.cs]
+# Namespaces por arquivo (namespace X;)
+csharp_style_namespace_declarations = file_scoped:warning
+
+# O projeto usa 'this.' para campos e membros de instância
+dotnet_style_qualification_for_field = true:suggestion
+dotnet_style_qualification_for_property = true:suggestion
+dotnet_style_qualification_for_method = true:suggestion
+dotnet_style_qualification_for_event = true:suggestion
+
+# usings fora do namespace, System primeiro
+csharp_using_directive_placement = outside_namespace:suggestion
+dotnet_sort_system_directives_first = true

@@ -1,0 +1,26 @@
+name: CI
+
+# Compila e testa SOMENTE o Core (PelicanLogistics.Core).
+# O projeto do mod (src/PelicanLogistics) não é compilado aqui porque depende
+# das DLLs do Stardew Valley e do SMAPI, que não existem no CI (software
+# proprietário). Ele é compilado localmente; ver docs/DEVELOPMENT.md.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Compilar o Core
+        run: dotnet build src/PelicanLogistics.Core -c Release
+
+      - name: Testar o Core
+        run: dotnet test tests/PelicanLogistics.Core.Tests -c Release
