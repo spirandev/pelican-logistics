@@ -6,7 +6,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 
 | Fase | Status | Branch | PR | Teste local |
 |---|---|---|---|---|
-| 0: Estrutura | Aguardando teste local | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | |
+| 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
 | 1: Base | Não iniciada | | | |
 | 2: Máquinas | Não iniciada | | | |
 | 3: Persistência | Não iniciada | | | |
@@ -29,7 +29,8 @@ Formato sugerido:
 - [ ] Ajuste: <descrição>
 ```
 
-(nenhuma pendência ainda)
+### Da fase 0
+- Nenhuma pendência. O mod compila (0 avisos), carrega no SMAPI com a mensagem esperada e cria o `config.json` com `UnlockAll`, `RotateKey` e `DebugMode`. Nenhum erro do mod no log (os erros de "Galaxy API" são do próprio jogo rodando pela Steam e não têm relação com o mod).
 
 ---
 
