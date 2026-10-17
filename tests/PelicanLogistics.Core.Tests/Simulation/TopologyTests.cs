@@ -22,16 +22,16 @@ public class TopologyTests
     }
 
     [Fact]
-    public void Order_ExtractorAfterBelt_InserterBeforeBeltFeedingIt()
+    public void Order_InserterAfterBeltInFront_InserterBeforeBeltFeedingIt()
     {
         var g = new GridBuilder()
-            .Extractor(0, 0, Direction.East)
+            .Inserter(0, 0, Direction.East)
             .Belt(1, 0, Direction.East)
             .Inserter(2, 0, Direction.East);
 
         IReadOnlyList<LogisticsNode> order = Topology.Recompute(g.Grid);
 
-        Assert.Equal(new[] { NodeKind.Inserter, NodeKind.Belt, NodeKind.Extractor }, order.Select(n => n.Kind));
+        Assert.Equal(new[] { 2, 1, 0 }, order.Select(n => n.Position.X));
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class TopologyTests
     }
 
     [Fact]
-    public void InputSide_InserterOnTheSide_DoesNotMakeCurve()
+    public void InputSide_InserterOnTheSide_MakesCurveLeavingIt()
     {
         var g = new GridBuilder()
             .Inserter(0, 0, Direction.East)
@@ -116,6 +116,73 @@ public class TopologyTests
 
         Topology.Recompute(g.Grid);
 
+        Assert.Equal(Direction.West, g.BeltAt(1, 0).InputSide);
+    }
+
+    [Fact]
+    public void InputSide_InserterOnTheSide_BeltWithBeltBehind_StaysStraight()
+    {
+        var g = new GridBuilder()
+            .Inserter(0, 0, Direction.East)
+            .Belt(1, 0, Direction.South)
+            .Belt(1, -1, Direction.South);
+
+        Topology.Recompute(g.Grid);
+
         Assert.Equal(Direction.North, g.BeltAt(1, 0).InputSide);
+    }
+
+    [Fact]
+    public void InserterInputs_AloneIsOnlyBack()
+    {
+        var g = new GridBuilder().Inserter(0, 0, Direction.North);
+
+        Topology.Recompute(g.Grid);
+
+        Assert.Equal(new[] { Direction.South }, g.InserterAt(0, 0).Inputs);
+    }
+
+    [Fact]
+    public void InserterInputs_BackAlwaysAndSidesWithBeltsEndingInIt_InClockwiseOrder()
+    {
+        // Inseridor virado para o sul: trás = norte. Esteiras terminando nele pelo leste e pelo oeste.
+        var g = new GridBuilder()
+            .Inserter(0, 0, Direction.South)
+            .Belt(1, 0, Direction.West)
+            .Belt(-1, 0, Direction.East);
+
+        Topology.Recompute(g.Grid);
+
+        Assert.Equal(new[] { Direction.North, Direction.East, Direction.West }, g.InserterAt(0, 0).Inputs);
+    }
+
+    [Fact]
+    public void InserterInputs_IgnoreSideBeltPassingBy_BeltAtFront_AndSideInserter()
+    {
+        var g = new GridBuilder()
+            .Inserter(0, 0, Direction.East)
+            .Belt(0, -1, Direction.East)   // passa ao lado, ao norte
+            .Belt(1, 0, Direction.West)    // aponta para a frente
+            .Inserter(0, 1, Direction.North); // Inseridor ao sul, com a frente nele
+
+        Topology.Recompute(g.Grid);
+
+        Assert.Equal(new[] { Direction.West }, g.InserterAt(0, 0).Inputs);
+    }
+
+    [Fact]
+    public void InserterInputs_RecomputedAfterRotation()
+    {
+        var g = new GridBuilder()
+            .Inserter(0, 0, Direction.East)
+            .Belt(0, -1, Direction.South);
+        Assert.Equal(2, g.Grid.ProcessingOrder.Count);
+        Assert.Equal(new[] { Direction.North, Direction.West }, g.InserterAt(0, 0).Inputs);
+
+        g.InserterAt(0, 0).Facing = Direction.South;
+        g.Grid.MarkDirty();
+        _ = g.Grid.ProcessingOrder;
+
+        Assert.Equal(new[] { Direction.North }, g.InserterAt(0, 0).Inputs);
     }
 }

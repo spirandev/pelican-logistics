@@ -1,5 +1,6 @@
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Core.Tests.Fakes;
 
 namespace PelicanLogistics.Core.Tests.Simulation;
@@ -9,12 +10,12 @@ public class FullFlowTests
     [Fact]
     public void ChestToChest_WithCurve_MovesEverythingAndConservesItems()
     {
-        // Baú A → Extrator → 2 esteiras para o leste → curva para o sul → esteira → Inseridor → baú B.
+        // Baú A → Inseridor → 2 esteiras para o leste → curva para o sul → esteira → Inseridor → baú B.
         var chestA = new FakeChest(36, new FakeItem("wood", 10), new FakeItem("stone", 3));
         var chestB = new FakeChest();
         var g = new GridBuilder()
             .Chest(0, 0, chestA)
-            .Extractor(1, 0, Direction.East)
+            .Inserter(1, 0, Direction.East)
             .Belt(2, 0, Direction.East)
             .Belt(3, 0, Direction.East)
             .Belt(4, 0, Direction.South)
@@ -43,7 +44,7 @@ public class FullFlowTests
         var chest = new FakeChest(36, new FakeItem("wood", 4), new FakeItem("stone", 1));
         var g = new GridBuilder()
             .Chest(0, 0, chest)
-            .Extractor(1, 0, Direction.East)
+            .Inserter(1, 0, Direction.East)
             .Belt(2, 0, Direction.East)
             .Belt(3, 0, Direction.East)
             .Belt(4, 0, Direction.East);
@@ -60,15 +61,15 @@ public class FullFlowTests
     [Fact]
     public void Furnace_OreAndCoalFromChests_BarsEndInChest_NothingLostOrCreated()
     {
-        // Baú de minério → Extrator → esteiras → Inseridor (Principal) → fornalha ← Inseridor (Adicional) ← esteiras ← Extrator ← baú de carvão.
-        // Fornalha → Extrator (Produto) → esteiras → Inseridor → baú de barras.
+        // Baú de minério → Inseridor → esteiras → Inseridor (Principal) → fornalha ← Inseridor (Adicional) ← esteiras ← Inseridor ← baú de carvão.
+        // Fornalha → Inseridor (Produto) → esteiras → Inseridor → baú de barras.
         var oreChest = new FakeChest(36, new FakeItem(FakeMachine.Ids.CopperOre, 10));
         var coalChest = new FakeChest(36, new FakeItem(FakeMachine.Ids.Coal, 2));
         var barChest = new FakeChest();
         var furnace = FakeMachine.Furnace(processingTicks: 300);
         var g = new GridBuilder()
             .Chest(0, 0, oreChest)
-            .Extractor(1, 0, Direction.East)
+            .Inserter(1, 0, Direction.East)
             .Belt(2, 0, Direction.East)
             .Belt(3, 0, Direction.East)
             .Inserter(4, 0, Direction.East, InserterSlotMode.Main)
@@ -76,9 +77,9 @@ public class FullFlowTests
             .Inserter(6, 0, Direction.West, InserterSlotMode.Additional)
             .Belt(7, 0, Direction.West)
             .Belt(8, 0, Direction.West)
-            .Extractor(9, 0, Direction.West)
+            .Inserter(9, 0, Direction.West)
             .Chest(10, 0, coalChest)
-            .Extractor(5, 1, Direction.South, ExtractorSource.Product)
+            .Inserter(5, 1, Direction.South, PickupSource.Product)
             .Belt(5, 2, Direction.South)
             .Belt(5, 3, Direction.South)
             .Inserter(5, 4, Direction.South)
@@ -120,12 +121,12 @@ public class FullFlowTests
         var furnace = FakeMachine.Furnace(processingTicks: 300);
         var g = new GridBuilder()
             .Chest(0, 0, chest)
-            .Extractor(1, 0, Direction.East)
+            .Inserter(1, 0, Direction.East)
             .Belt(2, 0, Direction.East)
             .Belt(3, 0, Direction.East)
             .Inserter(4, 0, Direction.East, InserterSlotMode.Auto)
             .Machine(5, 0, furnace)
-            .Extractor(5, 1, Direction.South, ExtractorSource.Product)
+            .Inserter(5, 1, Direction.South, PickupSource.Product)
             .Belt(5, 2, Direction.South)
             .Inserter(5, 3, Direction.South)
             .Chest(5, 4, barChest);
@@ -134,6 +135,51 @@ public class FullFlowTests
 
         Assert.Equal(2, barChest.CountById(FakeMachine.Ids.CopperBar));
         Assert.Equal(0, chest.CountTotal());
+        Assert.Equal(0, g.CountInTransit());
+    }
+
+    [Fact]
+    public void Furnace_DirectFromMixedChest_WithCoalFromSideBelt_ConservesItemsFor3000Ticks()
+    {
+        // Baú de minério → Inseridor → esteiras → Inseridor (Automático) → fornalha → Inseridor (Produto) → baú de barras.
+        // Baú de carvão → Inseridor → esteira que termina na lateral norte do Inseridor da fornalha.
+        var oreChest = new FakeChest(36, new FakeItem(FakeMachine.Ids.CopperOre, 15));
+        var coalChest = new FakeChest(36, new FakeItem(FakeMachine.Ids.Coal, 3));
+        var barChest = new FakeChest();
+        var furnace = FakeMachine.Furnace(processingTicks: 300);
+        var g = new GridBuilder()
+            .Chest(0, 0, oreChest)
+            .Inserter(1, 0, Direction.East)
+            .Belt(2, 0, Direction.East)
+            .Belt(3, 0, Direction.East)
+            .Inserter(4, 0, Direction.East, InserterSlotMode.Auto)
+            .Machine(5, 0, furnace)
+            .Inserter(5, 1, Direction.South, PickupSource.Product)
+            .Chest(5, 2, barChest)
+            .Chest(4, -3, coalChest)
+            .Inserter(4, -2, Direction.South)
+            .Belt(4, -1, Direction.South);
+
+        Assert.Equal(new[] { Direction.North, Direction.West }, g.Grid.ProcessingOrder.OfType<InserterNode>().Single(n => n.Position == new TilePos(4, 0)).Inputs);
+
+        int Total() =>
+            oreChest.CountTotal() + coalChest.CountTotal() + barChest.CountTotal() + g.CountInTransit()
+            + g.Grid.MachineSlots.Entries.SelectMany(e => e.Value.AllItems()).Sum(i => i.Count)
+            + (furnace.Output?.Count ?? 0);
+
+        int initial = Total();
+        for (int tick = 0; tick < 3000; tick++)
+        {
+            g.Run(1);
+
+            // Só a fornalha muda a soma: consome 5 minérios + 1 carvão e produz 1 barra.
+            Assert.Equal(initial - furnace.Consumed + furnace.Produced, Total());
+        }
+
+        Assert.Equal(3, furnace.Starts.Count);
+        Assert.Equal(3, barChest.CountById(FakeMachine.Ids.CopperBar));
+        Assert.Equal(0, oreChest.CountTotal());
+        Assert.Equal(0, coalChest.CountTotal());
         Assert.Equal(0, g.CountInTransit());
     }
 

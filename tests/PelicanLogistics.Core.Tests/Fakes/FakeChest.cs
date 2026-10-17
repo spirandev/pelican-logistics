@@ -68,6 +68,18 @@ public sealed class FakeChest : IChestEndpoint
         }
     }
 
+    public ILogisticsItem? Find(Func<ILogisticsItem, bool> predicate)
+    {
+        return this.Items.FirstOrDefault(predicate);
+    }
+
+    public int SpaceFor(ILogisticsItem item)
+    {
+        int inStacks = this.Items.Where(i => i.CanStackWith(item)).Sum(i => Math.Max(0, i.MaxStack - i.Count));
+        int inFreeSlots = Math.Max(0, this.Capacity - this.Items.Count) * item.MaxStack;
+        return inStacks + inFreeSlots;
+    }
+
     public int Insert(ILogisticsItem item, int max)
     {
         int toInsert = Math.Min(max, item.Count);

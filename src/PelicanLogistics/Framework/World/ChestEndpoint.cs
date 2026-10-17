@@ -52,6 +52,49 @@ internal sealed class ChestEndpoint : IChestEndpoint
         return null;
     }
 
+    public ILogisticsItem? Find(Func<ILogisticsItem, bool> predicate)
+    {
+        foreach (Item? stack in this.Items)
+        {
+            if (stack == null || stack.Stack <= 0)
+                continue;
+
+            var item = new GameItem(stack);
+            if (predicate(item))
+                return item;
+        }
+
+        return null;
+    }
+
+    /// <summary>Pilhas que empilham: o que falta para o máximo; slots vazios dentro da capacidade: uma pilha cheia cada.</summary>
+    public int SpaceFor(ILogisticsItem item)
+    {
+        Item source = ((GameItem)item).Item;
+        int perSlot = source.maximumStackSize();
+        int capacity = this.chest.GetActualCapacity();
+        IList<Item?> items = this.Items;
+
+        int space = 0;
+        for (int i = 0; i < items.Count; i++)
+        {
+            Item? slot = items[i];
+            if (slot == null)
+            {
+                if (i < capacity)
+                    space += perSlot;
+            }
+            else if (source.canStackWith(slot))
+            {
+                space += Math.Max(0, slot.maximumStackSize() - slot.Stack);
+            }
+        }
+
+        if (items.Count < capacity)
+            space += (capacity - items.Count) * perSlot;
+        return space;
+    }
+
     public int Insert(ILogisticsItem item, int max)
     {
         var source = (GameItem)item;

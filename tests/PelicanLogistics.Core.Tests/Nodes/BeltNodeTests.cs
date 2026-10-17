@@ -282,4 +282,18 @@ public class BeltNodeTests
         g.Run(1);
         Assert.Equal(Balance.End, g.BeltAt(0, 0).Slot.Progress);
     }
+
+    [Fact]
+    public void GetOutgoingSlot_OnlyForTileInFront_AndOnlyWithItem()
+    {
+        var belt = new BeltNode(new TilePos(0, 0), Direction.East);
+
+        Assert.Null(belt.GetOutgoingSlot(new TilePos(1, 0)));
+
+        belt.Slot.Put(new FakeItem("wood", 1), Direction.West);
+
+        Assert.Same(belt.Slot, belt.GetOutgoingSlot(new TilePos(1, 0)));
+        Assert.Null(belt.GetOutgoingSlot(new TilePos(-1, 0)));
+        Assert.Null(belt.GetOutgoingSlot(new TilePos(0, 1)));
+    }
 }

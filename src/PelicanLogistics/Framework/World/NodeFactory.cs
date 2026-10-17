@@ -18,8 +18,11 @@ internal static class NodeFactory
         return obj.ItemId switch
         {
             ItemIds.Belt => new BeltNode(pos, facing, BeltTier.Basic),
-            ItemIds.Extractor => new ExtractorNode(pos, facing, TransferTier.Single) { Source = ReadExtractorSource(obj) },
-            ItemIds.Inserter => new InserterNode(pos, facing, TransferTier.Single) { SlotMode = ReadInserterSlotMode(obj) },
+            ItemIds.Inserter => new InserterNode(pos, facing, TransferTier.Single)
+            {
+                Source = ReadPickupSource(obj),
+                SlotMode = ReadInserterSlotMode(obj),
+            },
             _ => null,
         };
     }
@@ -34,14 +37,14 @@ internal static class NodeFactory
         obj.modData[ModDataKeys.Facing] = facing.ToString();
     }
 
-    public static ExtractorSource ReadExtractorSource(SObject obj)
+    public static PickupSource ReadPickupSource(SObject obj)
     {
-        return ReadEnum(obj, ModDataKeys.ExtractorSource, ExtractorSource.Product);
+        return ReadEnum(obj, ModDataKeys.PickupSource, PickupSource.Product);
     }
 
-    public static void WriteExtractorSource(SObject obj, ExtractorSource source)
+    public static void WritePickupSource(SObject obj, PickupSource source)
     {
-        obj.modData[ModDataKeys.ExtractorSource] = source.ToString();
+        obj.modData[ModDataKeys.PickupSource] = source.ToString();
     }
 
     public static InserterSlotMode ReadInserterSlotMode(SObject obj)

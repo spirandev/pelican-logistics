@@ -8,7 +8,6 @@ public static class PlaceholderColors
     public static readonly Rgba BeltExpress = new(95, 95, 95);
     public static readonly Rgba Bridge = new(139, 90, 43);
     public static readonly Rgba Underground = new(70, 70, 70);
-    public static readonly Rgba Extractor = new(245, 140, 30);
     public static readonly Rgba Inserter = new(40, 110, 230);
     public static readonly Rgba FilterCommon = new(60, 180, 75);
     public static readonly Rgba FilterComplete = new(25, 110, 45);

@@ -68,6 +68,15 @@ public abstract class LogisticsNode
         return 0;
     }
 
+    /// <summary>
+    /// O slot que este nó está entregando para o tile 'target', ou null. Sem efeito colateral. Usado por quem
+    /// puxa (Inseridor; Divisor e Filtro na Fase 5), que confere <c>Progress == Balance.End</c> antes de pegar.
+    /// </summary>
+    public virtual TransitSlot? GetOutgoingSlot(TilePos target)
+    {
+        return null;
+    }
+
     /// <summary>Um tick de lógica.</summary>
     public abstract void Update(TickContext ctx);
 }

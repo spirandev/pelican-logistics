@@ -9,7 +9,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
-| 3: Inseridor único | Não iniciada | | | |
+| 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
 | 4: Persistência | Não iniciada | | | |
 | 5: Roteamento | Não iniciada | | | |
 | 6: Itens restantes | Não iniciada | | | |
@@ -42,9 +42,16 @@ Formato sugerido:
 ### Da fase 2
 - Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos) e não há erros do mod no log.
 - Testado e funcionando: interfaces do Extrator e do Inseridor, fornalha com Principal e Adicional, máquina de maionese, `pl_inspect`, itens dos slots caindo no chão ao quebrar a fornalha, uso manual da fornalha com itens guardados nos slots.
-- Não testado (sem os itens no save): Barril e Cristalário. Teste os dois na Fase 3 (`player_add (BC)12`, `player_add (BC)21`).
+- Não testado (sem os itens no save): Barril e Cristalário. Adiado pelo usuário; não precisa entrar no checklist das próximas fases.
 - Corrigido durante o teste local: a estatística de carga (`StatsToIncrementWhenLoaded`) contava a quantidade consumida; agora conta 1 por carga, como o `PlaceInMachine` do jogo.
 - Pedido de mudança do usuário: Extrator e Inseridor viram um bloco só, com entradas laterais e entrega direta (baú → máquina). Virou a nova Fase 3 (`fase-3-inseridor-unico.md`); README e plano mestre (D2, D3, D16, D17) já atualizados.
+
+### Da fase 3
+- O mod compila contra o jogo (0 avisos) e não há erros do mod no log.
+- Testado e funcionando: baú → Inseridor → baú com o braço, baú → Inseridor → esteira → Inseridor → baú, baú misto → Inseridor (Automático) → fornalha com as barras saindo por outro Inseridor, esteira chegando pela lateral, esteira passando de lado ignorada, rodízio entre baú atrás e esteira na lateral, interface com "Retirar de" e "Colocar em".
+- Não testado: destino cheio com o item esperando na mão e quebrar um Inseridor com item na mão (os testes do Core cobrem os dois).
+- [ ] Ajuste: remover a migração dos Extratores (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource` e a chamada no `WorldRegistry.Rebuild`). O usuário não tem mais saves com Extratores e não vai precisar dela. A proteção do `Added` (ignorar tile que já tem nó) pode ficar.
+- Observação de desempenho (não é bug): sem nada para pegar (ex.: baú só com madeira abastecendo uma fornalha), o Inseridor testa todas as pilhas do baú contra as regras da máquina a cada tick. Se o teste de desempenho da Fase 7 mostrar queda de FPS, fazer o Inseridor esperar alguns ticks antes de tentar de novo depois de uma tentativa sem sucesso.
 
 ---
 
@@ -77,3 +84,15 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Barril de carvalho (`Cask`) também fica de fora, como o Covo: tem lógica própria (envelhecimento, só na adega).
 - Bloco colocado começa com a configuração padrão (Produto / Automático): como na direção (Fase 1), o jogo copiaria o `modData` do item segurado.
 - `pl_inspect` também mostra se a máquina está ociosa, o produto pronto e se ela repete sozinha.
+
+### Fase 3
+- Branch: o push para `fase-3-inseridor-unico` funcionou nesta sessão, então foi usado o nome do plano (sem o prefixo `claude/`).
+- Pendências da Fase 2: nenhuma de correção. O teste do Barril e do Cristalário ficou no checklist de verificação local desta fase.
+- Destino que é um nó (esteira): `Fits` devolve `MaxStack` quando o nó aceita, e não `item.Count` (A5.1). Uma esteira guarda uma pilha inteira, e assim o Inseridor Configurável junta vários slots de um baú (teste 23).
+- Entradas laterais: um Inseridor vizinho com a frente apontando para este não conta como entrada (Inseridores não se conectam).
+- O destino é resolvido uma vez por tick: o adaptador cria um endpoint novo a cada consulta, e a busca no baú chama `Fits` para cada pilha.
+- Rodízio: começa depois de `LastInput` mesmo que ela não seja mais uma entrada (ex.: depois de girar o bloco).
+- Placeholder: o triângulo da frente é escuro (cor de contorno), e os pontos de tier ficam na coluna da esquerda, longe do triângulo e do braço parado.
+- `ItemIds.IsOurBigCraftable` passou a aceitar só os blocos registrados. Assim o Extrator antigo não é tratado como bloco do mod: o aviso `Removed` da migração não apaga o nó do Inseridor novo, e o patch de desenho não tenta desenhá-lo.
+- `pl_dump`: a mão do Inseridor aparece como `hand=[...]`, no mesmo formato dos espaços das esteiras.
+- Limitação da alpha: Extratores guardados em baús ou no inventário não são migrados e viram itens de erro do jogo. Só os colocados no mapa viram Inseridores.

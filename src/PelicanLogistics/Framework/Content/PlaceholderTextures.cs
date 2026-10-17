@@ -19,8 +19,7 @@ namespace PelicanLogistics.Framework.Content;
 /// | Índice | Item      |
 /// |--------|-----------|
 /// | 0      | Esteira   |
-/// | 1      | Extrator  |
-/// | 2      | Inseridor |
+/// | 1      | Inseridor |
 /// </code>
 /// As próximas fases acrescentam índices no fim de <see cref="Blocks"/>.
 /// </remarks>
@@ -37,15 +36,18 @@ internal static class PlaceholderTextures
     private static readonly (string ItemId, Func<PixelBuffer> Paint)[] Blocks =
     {
         (ItemIds.Belt, () => PlaceholderPainter.PaintBelt(BeltTier.Basic)),
-        (ItemIds.Extractor, () => PlaceholderPainter.PaintExtractor(TransferTier.Single)),
         (ItemIds.Inserter, () => PlaceholderPainter.PaintInserter(TransferTier.Single)),
     };
 
     private static readonly Dictionary<string, Texture2D> WorldSprites = new();
     private static Texture2D? ghostArrow;
+    private static Texture2D? pixel;
 
     /// <summary>Seta da colocação (16×16, apontando para o norte).</summary>
     public static Texture2D GhostArrow => ghostArrow ??= ToTexture(PlaceholderPainter.PaintGhostArrow());
+
+    /// <summary>1×1 pixel branco, esticado e colorido ao desenhar (braço e mão do Inseridor).</summary>
+    public static Texture2D Pixel => pixel ??= CreatePixel();
 
     /// <summary>Índice do item na folha de ícones.</summary>
     public static int SpriteIndexOf(string itemId)
@@ -83,6 +85,13 @@ internal static class PlaceholderTextures
             WorldSprites[itemId] = texture;
         }
 
+        return texture;
+    }
+
+    private static Texture2D CreatePixel()
+    {
+        var texture = new Texture2D(Game1.graphics.GraphicsDevice, 1, 1);
+        texture.SetData(new[] { Color.White });
         return texture;
     }
 
