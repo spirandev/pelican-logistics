@@ -45,6 +45,11 @@ public sealed class BeltNode : LogisticsNode
         return front == null ? Array.Empty<LogisticsNode>() : new[] { front };
     }
 
+    public override TransitSlot? GetOutgoingSlot(TilePos target)
+    {
+        return target == this.Position.Offset(this.Facing) && this.Slot.Item != null ? this.Slot : null;
+    }
+
     public override bool CanReceiveFrom(Direction entrySide)
     {
         return entrySide == this.InputSide && this.Slot.IsEmpty;

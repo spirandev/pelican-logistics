@@ -3,7 +3,7 @@ using PelicanLogistics.Core.Items;
 
 namespace PelicanLogistics.Core.Endpoints;
 
-/// <summary>Uma máquina com que Extratores e Inseridores interagem, por meio dos slots virtuais (README "Interação com máquinas").</summary>
+/// <summary>Uma máquina com que os Inseridores interagem, por meio dos slots virtuais (README "Interação com máquinas").</summary>
 public interface IMachineEndpoint : IEndpoint
 {
     /// <summary>Itens adicionais exigidos pela máquina (ex.: 1 carvão). Lista vazia se não houver.</summary>

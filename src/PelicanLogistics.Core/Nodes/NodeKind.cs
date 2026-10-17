@@ -4,7 +4,6 @@ namespace PelicanLogistics.Core.Nodes;
 public enum NodeKind
 {
     Belt,
-    Extractor,
     Inserter,
     Filter,
     Splitter,

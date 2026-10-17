@@ -11,7 +11,7 @@ namespace PelicanLogistics.Core.Simulation;
 /// </summary>
 public static class Topology
 {
-    /// <summary>Recalcula o lado de entrada das esteiras e devolve a ordem de processamento.</summary>
+    /// <summary>Recalcula o lado de entrada das esteiras e as entradas dos Inseridores, e devolve a ordem de processamento.</summary>
     public static IReadOnlyList<LogisticsNode> Recompute(LogisticsGrid grid)
     {
         List<LogisticsNode> nodes = grid.Nodes
@@ -23,6 +23,12 @@ public static class Topology
         {
             if (node is BeltNode belt)
                 belt.InputSide = ComputeInputSide(grid, belt);
+        }
+
+        foreach (LogisticsNode node in nodes)
+        {
+            if (node is InserterNode inserter)
+                inserter.Inputs = ComputeInserterInputs(grid, inserter);
         }
 
         return ComputeOrder(grid, nodes);
@@ -44,6 +50,30 @@ public static class Topology
             return left ? belt.Facing.CounterClockwise() : belt.Facing.Clockwise();
 
         return back;
+    }
+
+    /// <summary>
+    /// Entradas de um Inseridor (README "Inseridores"), em ordem horária N → E → S → W: a traseira sempre (pode haver
+    /// baú ou máquina ali; o Core não sabe) e cada lateral com um vizinho que entrega nele (uma esteira que termina
+    /// nele; outro Inseridor não conta). A frente nunca.
+    /// </summary>
+    private static IReadOnlyList<Direction> ComputeInserterInputs(LogisticsGrid grid, InserterNode inserter)
+    {
+        Direction back = inserter.Facing.Opposite();
+        var inputs = new List<Direction>(3);
+        foreach (Direction side in DirectionExtensions.All)
+        {
+            if (side == back || (side != inserter.Facing && Provides(grid, inserter, side) && !IsInserterAt(grid, inserter, side)))
+                inputs.Add(side);
+        }
+
+        return inputs;
+    }
+
+    /// <summary>Inseridores encostados não se conectam (README "Inseridores").</summary>
+    private static bool IsInserterAt(LogisticsGrid grid, LogisticsNode node, Direction side)
+    {
+        return grid.Get(node.Position.Offset(side)) is InserterNode;
     }
 
     private static bool Provides(LogisticsGrid grid, LogisticsNode node, Direction side)

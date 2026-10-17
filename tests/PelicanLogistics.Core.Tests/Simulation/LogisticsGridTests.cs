@@ -50,7 +50,7 @@ public class LogisticsGridTests
         var grid = new LogisticsGrid();
         grid.Add(new BeltNode(new TilePos(0, 0), Direction.East));
 
-        Assert.Throws<InvalidOperationException>(() => grid.Add(new ExtractorNode(new TilePos(0, 0), Direction.East)));
+        Assert.Throws<InvalidOperationException>(() => grid.Add(new InserterNode(new TilePos(0, 0), Direction.East)));
     }
 
     [Fact]
@@ -139,13 +139,13 @@ public class LogisticsGridTests
             .Belt(0, 0, Direction.East)
             .Inserter(1, 0, Direction.East, InserterSlotMode.Auto)
             .Machine(2, 0, keg)
-            .Extractor(2, 1, Direction.South, ExtractorSource.Product)
+            .Inserter(2, 1, Direction.South, PickupSource.Product)
             .Belt(2, 2, Direction.South)
             .Inserter(2, 3, Direction.South)
             .Chest(2, 4, wineChest)
             .Item(0, 0, fruit, Balance.End);
 
-        g.Run(1);
+        g.Run(Balance.End / Balance.InserterSpeed + 1);
         Assert.Single(keg.Starts);
         Assert.Equal(9, fruit.Count);
 

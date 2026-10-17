@@ -1,7 +1,7 @@
 namespace PelicanLogistics.Core.Nodes;
 
-/// <summary>De onde o Extrator retira quando a origem é uma máquina (README "Retirada (Extrator)").</summary>
-public enum ExtractorSource
+/// <summary>De onde o Inseridor retira quando a origem atrás dele é uma máquina (README "Retirada (Inseridor)").</summary>
+public enum PickupSource
 {
     /// <summary>O que a máquina fabricou (padrão).</summary>
     Product,

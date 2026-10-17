@@ -1,6 +1,6 @@
 namespace PelicanLogistics.Core.Nodes;
 
-/// <summary>Versões do Extrator e do Inseridor (README: básico, de Pilha, Configurável).</summary>
+/// <summary>Versões do Inseridor (README: básico, de Pilha, Configurável).</summary>
 public enum TransferTier
 {
     /// <summary>1 item por vez.</summary>

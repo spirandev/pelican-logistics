@@ -22,18 +22,6 @@ public sealed class GridBuilder
         return this;
     }
 
-    public GridBuilder Extractor(int x, int y, Direction facing, TransferTier tier = TransferTier.Single)
-    {
-        this.Grid.Add(new ExtractorNode(new TilePos(x, y), facing, tier));
-        return this;
-    }
-
-    public GridBuilder Extractor(int x, int y, Direction facing, ExtractorSource source, TransferTier tier = TransferTier.Single)
-    {
-        this.Grid.Add(new ExtractorNode(new TilePos(x, y), facing, tier) { Source = source });
-        return this;
-    }
-
     public GridBuilder Inserter(int x, int y, Direction facing, TransferTier tier = TransferTier.Single)
     {
         this.Grid.Add(new InserterNode(new TilePos(x, y), facing, tier));
@@ -43,6 +31,12 @@ public sealed class GridBuilder
     public GridBuilder Inserter(int x, int y, Direction facing, InserterSlotMode mode, TransferTier tier = TransferTier.Single)
     {
         this.Grid.Add(new InserterNode(new TilePos(x, y), facing, tier) { SlotMode = mode });
+        return this;
+    }
+
+    public GridBuilder Inserter(int x, int y, Direction facing, PickupSource source, TransferTier tier = TransferTier.Single)
+    {
+        this.Grid.Add(new InserterNode(new TilePos(x, y), facing, tier) { Source = source });
         return this;
     }
 
@@ -82,6 +76,8 @@ public sealed class GridBuilder
 
     public BeltNode BeltAt(int x, int y) => this.NodeAt<BeltNode>(x, y);
 
+    public InserterNode InserterAt(int x, int y) => this.NodeAt<InserterNode>(x, y);
+
     /// <summary>Slots virtuais da máquina no tile, ou null se não há nada guardado.</summary>
     public VirtualSlots? SlotsAt(int x, int y) => this.Grid.MachineSlots.Get(new TilePos(x, y));
 
@@ -91,7 +87,7 @@ public sealed class GridBuilder
         return Assert.IsType<T>(this.Grid.Get(new TilePos(x, y)));
     }
 
-    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós).</summary>
+    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós: esteiras e mãos dos Inseridores).</summary>
     public int CountInTransit()
     {
         return this.Grid.Nodes.SelectMany(n => n.Slots).Where(s => s.Item != null).Sum(s => s.Item!.Count);

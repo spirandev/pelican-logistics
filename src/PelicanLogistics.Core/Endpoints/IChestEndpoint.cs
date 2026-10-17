@@ -3,7 +3,7 @@ using PelicanLogistics.Core.Items;
 
 namespace PelicanLogistics.Core.Endpoints;
 
-/// <summary>Um baú com que Extratores e Inseridores interagem.</summary>
+/// <summary>Um baú com que os Inseridores interagem.</summary>
 public interface IChestEndpoint : IEndpoint
 {
     /// <summary>
@@ -13,6 +13,12 @@ public interface IChestEndpoint : IEndpoint
     /// Retorna null se não encontrar nada.
     /// </summary>
     ILogisticsItem? Extract(Func<ILogisticsItem, bool> predicate, ExtractAmount mode, int amount);
+
+    /// <summary>Primeira pilha (na ordem do inventário) que satisfaz 'predicate', sem retirar. Null se não houver.</summary>
+    ILogisticsItem? Find(Func<ILogisticsItem, bool> predicate);
+
+    /// <summary>Quantas unidades de 'item' caberiam agora (pilhas existentes que empilham + slots livres). Sem efeito colateral.</summary>
+    int SpaceFor(ILogisticsItem item);
 
     /// <summary>Insere até 'max' unidades de 'item'. Retorna quantas entraram. Se entrar tudo, o baú pode ficar com a instância.</summary>
     int Insert(ILogisticsItem item, int max);
