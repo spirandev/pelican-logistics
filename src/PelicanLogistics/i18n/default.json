@@ -1,3 +1,17 @@
 {
-  "mod.loaded": "Pelican Logistics {{version}} carregado."
+  "mod.loaded": "Pelican Logistics {{version}} carregado.",
+
+  "item.belt.name": "Esteira",
+  "item.belt.description": "Move itens em um único sentido. Gire com R.",
+  "item.extractor.name": "Extrator",
+  "item.extractor.description": "Retira itens do baú atrás dele e coloca na esteira à frente, um por vez.",
+  "item.inserter.name": "Inseridor",
+  "item.inserter.description": "Pega itens da esteira atrás dele e coloca no baú à frente, um por vez.",
+
+  "command.world-not-ready": "Carregue um save antes de usar este comando.",
+  "command.give.description": "Coloca no inventário {{amount}} de cada item do Pelican Logistics.\n\nUso: pl_give",
+  "command.give.done": "{{amount}} de cada item do Pelican Logistics foram adicionados ao inventário.",
+  "command.dump.description": "Lista os blocos do Pelican Logistics no local atual: posição, tipo, direção, entrada, item e progresso.\n\nUso: pl_dump",
+  "command.dump.empty": "Nenhum bloco do Pelican Logistics em {{location}}.",
+  "command.dump.header": "{{count}} bloco(s) em {{location}}:"
 }
