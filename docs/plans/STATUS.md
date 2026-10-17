@@ -9,7 +9,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
-| 3: Inseridor único | Aguardando teste local | `fase-3-inseridor-unico` | (PR em aberto) | |
+| 3: Inseridor único | Aguardando teste local | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | |
 | 4: Persistência | Não iniciada | | | |
 | 5: Roteamento | Não iniciada | | | |
 | 6: Itens restantes | Não iniciada | | | |
