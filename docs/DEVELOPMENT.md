@@ -146,6 +146,29 @@ Depois de seguir o checklist de "Verificação local" do PR da fase, registre o 
 
 ## 8. Comandos de console do mod
 
-Digite no console do SMAPI.
+Digite no console do SMAPI (com um save carregado).
 
-(adicionados nas próximas fases)
+| Comando | O que faz | Desde |
+|---|---|---|
+| `pl_give` | Coloca no inventário 10 de cada item do mod (Esteira, Extrator, Inseridor). Útil quando a loja do Clint está fechada. | Fase 1 |
+| `pl_dump` | Lista os blocos do mod no local atual: posição, tipo, direção, lado de entrada (esteiras), cooldown (Extrator/Inseridor) e, para cada espaço, item, quantidade, progresso (`0..600`), lado de entrada e se está `blocked`. | Fase 1 |
+
+Exemplo de saída do `pl_dump`:
+
+```
+3 bloco(s) em Farm:
+  (60, 15) Extractor facing=East tier=Single cooldown=12
+  (61, 15) Belt facing=East tier=Basic input=West [Madeira x1 340/600 entry=West]
+  (62, 15) Belt facing=South tier=Basic input=West [vazio]
+```
+
+---
+
+## 9. Usando os blocos (alpha)
+
+- **Rotação:** segurando um bloco do mod, `R` (configurável em `RotateKey`) gira a direção de colocação; uma seta semitransparente mostra a direção no tile do cursor. Com a mão livre e o cursor sobre um bloco colocado, `R` gira o bloco.
+- **Extrator:** o baú fica **atrás** dele e a esteira **na frente** (o triângulo laranja aponta para a esteira).
+- **Inseridor:** a esteira fica **atrás** dele e o baú **na frente** (o triângulo azul aponta para o baú).
+- **Esteira:** só recebe por trás. Uma esteira sem nada atrás e com outra entregando pela lateral vira curva.
+- **Remover:** quebre o bloco com a picareta; ele e o item que carregava caem no chão.
+- **Limitação da Fase 1:** os itens em trânsito somem ao salvar e carregar o jogo (a Fase 3 resolve).
