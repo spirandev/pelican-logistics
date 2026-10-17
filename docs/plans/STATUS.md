@@ -9,7 +9,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
-| 3: Inseridor único | Não iniciada | | | |
+| 3: Inseridor único | Aguardando teste local | `fase-3-inseridor-unico` | (PR em aberto) | |
 | 4: Persistência | Não iniciada | | | |
 | 5: Roteamento | Não iniciada | | | |
 | 6: Itens restantes | Não iniciada | | | |
@@ -77,3 +77,15 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Barril de carvalho (`Cask`) também fica de fora, como o Covo: tem lógica própria (envelhecimento, só na adega).
 - Bloco colocado começa com a configuração padrão (Produto / Automático): como na direção (Fase 1), o jogo copiaria o `modData` do item segurado.
 - `pl_inspect` também mostra se a máquina está ociosa, o produto pronto e se ela repete sozinha.
+
+### Fase 3
+- Branch: o push para `fase-3-inseridor-unico` funcionou nesta sessão, então foi usado o nome do plano (sem o prefixo `claude/`).
+- Pendências da Fase 2: nenhuma de correção. O teste do Barril e do Cristalário ficou no checklist de verificação local desta fase.
+- Destino que é um nó (esteira): `Fits` devolve `MaxStack` quando o nó aceita, e não `item.Count` (A5.1). Uma esteira guarda uma pilha inteira, e assim o Inseridor Configurável junta vários slots de um baú (teste 23).
+- Entradas laterais: um Inseridor vizinho com a frente apontando para este não conta como entrada (Inseridores não se conectam).
+- O destino é resolvido uma vez por tick: o adaptador cria um endpoint novo a cada consulta, e a busca no baú chama `Fits` para cada pilha.
+- Rodízio: começa depois de `LastInput` mesmo que ela não seja mais uma entrada (ex.: depois de girar o bloco).
+- Placeholder: o triângulo da frente é escuro (cor de contorno), e os pontos de tier ficam na coluna da esquerda, longe do triângulo e do braço parado.
+- `ItemIds.IsOurBigCraftable` passou a aceitar só os blocos registrados. Assim o Extrator antigo não é tratado como bloco do mod: o aviso `Removed` da migração não apaga o nó do Inseridor novo, e o patch de desenho não tenta desenhá-lo.
+- `pl_dump`: a mão do Inseridor aparece como `hand=[...]`, no mesmo formato dos espaços das esteiras.
+- Limitação da alpha: Extratores guardados em baús ou no inventário não são migrados e viram itens de erro do jogo. Só os colocados no mapa viram Inseridores.
