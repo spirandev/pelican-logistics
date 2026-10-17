@@ -42,6 +42,33 @@ internal sealed class WorldRegistry
         return this.locations.TryGetValue(key, out location);
     }
 
+    /// <summary>
+    /// O local da chave, mesmo sem blocos (ex.: só slots virtuais restaurados ao carregar), ou null se ele não
+    /// existe mais. O local encontrado passa a ser conhecido (<see cref="TryGetLocation"/>), para a grade dele rodar.
+    /// </summary>
+    public GameLocation? FindLocation(string key)
+    {
+        if (this.locations.TryGetValue(key, out GameLocation? known))
+            return known;
+
+        GameLocation? found = null;
+        Utility.ForEachLocation(
+            location =>
+            {
+                if (KeyOf(location) != key)
+                    return true;
+
+                found = location;
+                return false;
+            },
+            true,   // includeInteriors
+            false); // includeGenerated
+
+        if (found != null)
+            this.locations[key] = found;
+        return found;
+    }
+
     /// <summary>Recria todos os nós a partir dos objetos dos locais (ao carregar o save).</summary>
     public void Rebuild()
     {
@@ -185,13 +212,26 @@ internal sealed class WorldRegistry
     }
 
     /// <summary>Solta os itens no chão, no centro do tile.</summary>
-    private static void DropItems(GameLocation location, Vector2 tile, IEnumerable<ILogisticsItem> items)
+    public static void DropItems(GameLocation location, Vector2 tile, IEnumerable<ILogisticsItem> items)
     {
-        Vector2 pixel = new(tile.X * Game1.tileSize + (Game1.tileSize / 2), tile.Y * Game1.tileSize + (Game1.tileSize / 2));
+        var gameItems = new List<Item>();
         foreach (ILogisticsItem item in items)
         {
-            if (item is GameItem gameItem && gameItem.Count > 0)
-                Game1.createItemDebris(gameItem.Item, pixel, -1, location);
+            if (item is GameItem gameItem)
+                gameItems.Add(gameItem.Item);
+        }
+
+        DropItems(location, tile, gameItems);
+    }
+
+    /// <summary>Solta os itens do jogo no chão, no centro do tile. Pilhas vazias são ignoradas.</summary>
+    public static void DropItems(GameLocation location, Vector2 tile, IEnumerable<Item> items)
+    {
+        Vector2 pixel = new(tile.X * Game1.tileSize + (Game1.tileSize / 2), tile.Y * Game1.tileSize + (Game1.tileSize / 2));
+        foreach (Item item in items)
+        {
+            if (item.Stack > 0)
+                Game1.createItemDebris(item, pixel, -1, location);
         }
     }
 }

@@ -4,6 +4,7 @@ using PelicanLogistics.Framework;
 using PelicanLogistics.Framework.Content;
 using PelicanLogistics.Framework.Input;
 using PelicanLogistics.Framework.Patches;
+using PelicanLogistics.Framework.Persistence;
 using PelicanLogistics.Framework.Rendering;
 using PelicanLogistics.Framework.World;
 using StardewModdingAPI;
@@ -19,6 +20,7 @@ public sealed class ModEntry : Mod
     private WorldRegistry registry = null!;
     private PlacementController placement = null!;
     private BlockMenuController menus = null!;
+    private SaveManager saves = null!;
 
     public override void Entry(IModHelper helper)
     {
@@ -27,6 +29,7 @@ public sealed class ModEntry : Mod
         this.registry = new WorldRegistry(this.Monitor, () => this.placement.CurrentDirection);
         this.placement = new PlacementController(helper, this.config, this.registry);
         this.menus = new BlockMenuController(helper, this.registry);
+        this.saves = new SaveManager(helper, this.Monitor, this.registry);
         var renderer = new NodeRenderer(this.registry, this.placement);
 
         new ContentRegistrar(helper, this.config).Register();
@@ -35,6 +38,8 @@ public sealed class ModEntry : Mod
 
         helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
         helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
+        helper.Events.GameLoop.Saving += this.OnSaving;
+        helper.Events.GameLoop.Saved += this.OnSaved;
         helper.Events.GameLoop.ReturnedToTitle += this.OnReturnedToTitle;
         helper.Events.GameLoop.UpdateTicked += this.OnUpdateTicked;
         helper.Events.World.ObjectListChanged += this.OnObjectListChanged;
@@ -62,9 +67,21 @@ public sealed class ModEntry : Mod
             LogLevel.Info);
     }
 
+    /// <summary>Recria os nós a partir dos objetos e, em seguida (nessa ordem), devolve a eles os itens salvos.</summary>
     private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
     {
         this.registry.Rebuild();
+        this.saves.Load();
+    }
+
+    private void OnSaving(object? sender, SavingEventArgs e)
+    {
+        this.saves.OnSaving();
+    }
+
+    private void OnSaved(object? sender, SavedEventArgs e)
+    {
+        this.saves.OnSaved();
     }
 
     private void OnReturnedToTitle(object? sender, ReturnedToTitleEventArgs e)
