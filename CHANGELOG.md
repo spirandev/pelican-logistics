@@ -27,3 +27,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Mod: quebrar uma máquina solta no chão os itens dos slots virtuais.
 - Mod: interface base de configuração (`ConfigMenu` + `CycleRow`) e interfaces do Extrator ("Retirar de") e do Inseridor ("Colocar em"), abertas com o botão de ação.
 - Mod: comando de console `pl_inspect` (bloco e slots virtuais sob o cursor).
+- Core: Inseridor com braço: o item viaja na mão (ida de 15 ticks, volta de 15), entradas laterais (esteiras que terminam nele) em rodízio horário e entrega direta baú → baú e baú → máquina.
+- Core: o Inseridor só pega o que o destino aceita agora, e só a quantidade que cabe; se o destino encher na ida, o item espera na mão.
+- Core: `ArmMath` (ângulo do braço e posição da mão) e consultas sem efeito colateral do baú (`Find`, `SpaceFor`).
+- Mod: desenho do braço, da mão e do item na mão do Inseridor; interface do Inseridor com "Retirar de" e "Colocar em".
+- Mod: `pl_dump` e `pl_inspect` mostram a mão, a última entrada e as entradas do Inseridor.
+
+### Alterado
+- Extrator e Inseridor unificados no Inseridor (README "Inseridores"): ele pega atrás (baú, máquina ou esteira) e entrega na frente. O placeholder passa a ser um quadrado azul com um triângulo na borda do destino.
+- Saves das Fases 1 e 2: os Extratores colocados no mapa são trocados por Inseridores ao carregar, na mesma direção e com o mesmo "Retirar de".
+
+### Removido
+- Extrator (bloco, interface e `ExtractorNode`). Extratores guardados em baús ou no inventário viram itens de erro do jogo.

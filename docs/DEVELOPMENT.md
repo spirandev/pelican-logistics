@@ -150,8 +150,8 @@ Digite no console do SMAPI (com um save carregado).
 
 | Comando | O que faz | Desde |
 |---|---|---|
-| `pl_give` | Coloca no inventário 10 de cada item do mod (Esteira, Extrator, Inseridor). Útil quando a loja do Clint está fechada. | Fase 1 |
-| `pl_dump` | Lista os blocos do mod no local atual: posição, tipo, direção, lado de entrada (esteiras), configuração e cooldown (Extrator/Inseridor) e, para cada espaço, item, quantidade, progresso (`0..600`), lado de entrada e se está `blocked`. | Fase 1 |
+| `pl_give` | Coloca no inventário 10 de cada item do mod (Esteira, Inseridor). Útil quando a loja do Clint está fechada. | Fase 1 |
+| `pl_dump` | Lista os blocos do mod no local atual: posição, tipo, direção, lado de entrada (esteiras) e, para o Inseridor, `source=` (Retirar de), `slot=` (Colocar em), `cooldown=` (ticks da volta do braço), `lastInput=` (última entrada usada) e `inputs=` (entradas). Para cada espaço (o da esteira, ou a mão do Inseridor em `hand=`): item, quantidade, progresso (`0..600`), lado de entrada e se está `blocked`. | Fase 1 (Inseridor: Fase 3) |
 | `pl_inspect` | Mostra o bloco sob o cursor (como uma linha do `pl_dump`) e, se o tile for uma máquina, os slots virtuais (`Principal: 3/5 Minério de cobre`, `Adicional: 1/1 Carvão`) e o estado da máquina. | Fase 2 |
 
 Exemplo de saída do `pl_inspect` sobre uma fornalha:
@@ -167,20 +167,27 @@ Exemplo de saída do `pl_dump`:
 
 ```
 3 bloco(s) em Farm:
-  (60, 15) Extractor facing=East tier=Single source=Product cooldown=12
+  (60, 15) Inserter facing=East tier=Single source=Product slot=Auto cooldown=0 lastInput=West inputs=North,West hand=[Madeira x1 240/600 entry=West]
   (61, 15) Belt facing=East tier=Basic input=West [Madeira x1 340/600 entry=West]
   (62, 15) Belt facing=South tier=Basic input=West [vazio]
 ```
+
+No Inseridor, o progresso da mão vai de `0` (na origem) a `600` (no destino) em 15 ticks; depois de entregar, `cooldown` conta os 15 ticks da volta. `blocked` na mão indica que o destino encheu e o item espera para entrar.
 
 ---
 
 ## 9. Usando os blocos (alpha)
 
 - **Rotação:** segurando um bloco do mod, `R` (configurável em `RotateKey`) gira a direção de colocação; uma seta semitransparente mostra a direção no tile do cursor. Com a mão livre e o cursor sobre um bloco colocado, `R` gira o bloco.
-- **Extrator:** o baú ou a máquina fica **atrás** dele e a esteira **na frente** (o triângulo laranja aponta para a esteira).
-- **Inseridor:** a esteira fica **atrás** dele e o baú ou a máquina **na frente** (o triângulo azul aponta para o destino).
-- **Interfaces:** clique com o botão de ação (direito) num Extrator para escolher **Retirar de** (Produto, Principal ou Adicional) ou num Inseridor para escolher **Colocar em** (Automático, Principal ou Adicional). A escolha vale na hora. Um bloco recolhido e colocado de novo volta à configuração padrão.
+- **Inseridor:** pega **atrás** e entrega **na frente** (o triângulo escuro na borda do quadrado azul aponta para o destino). Exemplos: baú → Inseridor → esteira; esteira → Inseridor → fornalha; baú → Inseridor → fornalha (direto); fornalha → Inseridor → baú.
+  - **Frente (destino):** baú, máquina, ou esteira que começa nele (com a traseira virada para ele, ou fazendo curva saindo dele). Outro Inseridor na frente não recebe.
+  - **Trás (origem):** baú, máquina ou esteira que termina nele. **Laterais:** só esteiras que **terminam** nele; baús e máquinas nas laterais e esteiras passando ao lado são ignorados.
+  - **Várias entradas:** alterna entre elas em ordem horária (N → L → S → O), continuando depois da última usada.
+  - **Só pega o que o destino aceita**, e só a quantidade que cabe: de um baú com madeira e minério, abastecendo uma fornalha, só sai minério, e no máximo o que falta no slot.
+  - **Braço:** o item viaja na mão; o braço gira da origem até o destino (0,25 s), entrega e volta vazio (0,25 s). Se o destino encher no caminho, o item espera na mão. Parado, o braço aponta para a última entrada usada.
+- **Interface:** clique com o botão de ação (direito) num Inseridor. **Retirar de** (Produto, Principal ou Adicional) vale quando atrás há uma máquina; **Colocar em** (Automático, Principal ou Adicional) vale quando na frente há uma máquina. A escolha vale na hora. Um bloco recolhido e colocado de novo volta à configuração padrão.
 - **Máquinas:** o Inseridor guarda os itens nos **slots virtuais** da máquina (Principal e Adicional) e a aciona quando tudo está completo. Quebrar a máquina solta no chão os itens guardados. Covo e Barril de carvalho não são suportados na alpha.
-- **Esteira:** só recebe por trás. Uma esteira sem nada atrás e com outra entregando pela lateral vira curva.
-- **Remover:** quebre o bloco com a picareta; ele e o item que carregava caem no chão.
-- **Limitação das Fases 1 e 2:** os itens em trânsito e os guardados nos slots virtuais somem ao salvar e carregar o jogo (a Fase 3 resolve).
+- **Esteira:** só recebe por trás. Uma esteira sem nada atrás e com outra (ou um Inseridor) entregando pela lateral vira curva.
+- **Remover:** quebre o bloco com a picareta; ele e o item que carregava (na esteira ou na mão do Inseridor) caem no chão.
+- **Saves das Fases 1 e 2:** ao carregar, cada Extrator colocado no mapa vira um Inseridor no mesmo tile, com a mesma direção e o mesmo "Retirar de" (o log do SMAPI mostra quantos). Extratores guardados em baús ou no inventário **não** são migrados e viram itens de erro do jogo.
+- **Limitação até a Fase 3:** os itens em trânsito, os itens na mão dos Inseridores e os guardados nos slots virtuais somem ao salvar e carregar o jogo (a Fase 4 resolve).
