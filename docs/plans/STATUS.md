@@ -7,7 +7,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | Fase | Status | Branch | PR | Teste local |
 |---|---|---|---|---|
 | 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
-| 1: Base | Aguardando teste local | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | |
+| 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
 | 2: Máquinas | Não iniciada | | | |
 | 3: Persistência | Não iniciada | | | |
 | 4: Roteamento | Não iniciada | | | |
@@ -31,6 +31,10 @@ Formato sugerido:
 
 ### Da fase 0
 - Nenhuma pendência. O mod compila (0 avisos), carrega no SMAPI com a mensagem esperada e cria o `config.json` com `UnlockAll`, `RotateKey` e `DebugMode`. Nenhum erro do mod no log (os erros de "Galaxy API" são do próprio jogo rodando pela Steam e não têm relação com o mod).
+
+### Da fase 1
+- Nenhuma pendência. O mod compila contra o jogo (0 avisos), o checklist de verificação local passou e não há erros do mod no log.
+- Corrigido durante o teste local: um bloco recolhido e colocado de novo voltava na direção antiga, porque o jogo copia o `modData` do item segurado ao colocar (`Object.getOne`). Agora a direção da seta sempre é gravada ao colocar.
 
 ---
 
