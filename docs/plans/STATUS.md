@@ -7,7 +7,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | Fase | Status | Branch | PR | Teste local |
 |---|---|---|---|---|
 | 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
-| 1: Base | Não iniciada | | | |
+| 1: Base | Aguardando teste local | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | |
 | 2: Máquinas | Não iniciada | | | |
 | 3: Persistência | Não iniciada | | | |
 | 4: Roteamento | Não iniciada | | | |
@@ -41,3 +41,14 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 ### Fase 0
 - Branch: a sessão na nuvem só pode publicar numa branch com prefixo `claude/`, então a Fase 0 usou `claude/fase-0-estrutura-ohoxty` em vez de `fase-0-estrutura`.
 - Templates: o SDK 8 não aceita `dotnet new classlib -f net6.0`; os projetos foram gerados com o padrão e os `.csproj` substituídos pelos do plano (`net6.0`).
+
+### Fase 1
+- Branch: o push para `fase-1-base` funcionou nesta sessão, então foi usado o nome do plano (sem o prefixo `claude/`).
+- Cooldown do Extrator: decrementa e testa no mesmo tick, para o período ser exatamente `TransferCooldownTicks` (30). O passo literal do plano (A9) daria 31 ticks.
+- Prévia de colocação: quando o jogo desenha o item segurado sobre o cursor, o bloco aparece na direção de colocação atual. Um bloco colocado ainda sem nó usa a direção do `modData` (o plano dizia `East`).
+- Folha de ícones: cada carregamento do asset cria uma textura nova (ela pertence ao gerenciador de conteúdo do jogo). Só os sprites de mundo ficam em cache.
+- `ChestEndpoint`: inserção no padrão do Automate (`addToStack` + slot livre dentro de `GetActualCapacity()`), em vez de `chest.addItem`; retirada de pilha inteira com `RemoveAt`; inventário via `GetItemsForPlayer()`; geladeiras (`fridge`) excluídas (D10).
+- Patch de `Object.draw` com argumentos por posição (`__0`..`__3`); erro no desenho é registrado uma vez e o desenho volta para o do jogo.
+- Textos dos comandos de console também ficam no `i18n` (D14).
+- Tiers Stack/Configurable do Extrator e do Inseridor já funcionam no Core (A9/A10), com testes; o adaptador só cria a versão `Single`.
+- `PathMath`: pontas da curva exatas, sem erro de arredondamento.
