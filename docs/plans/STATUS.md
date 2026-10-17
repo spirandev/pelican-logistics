@@ -8,11 +8,14 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 |---|---|---|---|---|
 | 0: Estrutura | Concluída | `claude/fase-0-estrutura-ohoxty` | [#1](https://github.com/spirandev/pelican-logistics/pull/1) | OK em 2026-10-16 (Linux, Steam Flatpak, SMAPI 4.5.2, jogo 1.6.15) |
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
-| 2: Máquinas | Aguardando teste local | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | |
-| 3: Persistência | Não iniciada | | | |
-| 4: Roteamento | Não iniciada | | | |
-| 5: Itens restantes | Não iniciada | | | |
-| 6: Dicas e alpha | Não iniciada | | | |
+| 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
+| 3: Inseridor único | Não iniciada | | | |
+| 4: Persistência | Não iniciada | | | |
+| 5: Roteamento | Não iniciada | | | |
+| 6: Itens restantes | Não iniciada | | | |
+| 7: Dicas e alpha | Não iniciada | | | |
+
+A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7.
 
 ---
 
@@ -35,6 +38,13 @@ Formato sugerido:
 ### Da fase 1
 - Nenhuma pendência. O mod compila contra o jogo (0 avisos), o checklist de verificação local passou e não há erros do mod no log.
 - Corrigido durante o teste local: um bloco recolhido e colocado de novo voltava na direção antiga, porque o jogo copia o `modData` do item segurado ao colocar (`Object.getOne`). Agora a direção da seta sempre é gravada ao colocar.
+
+### Da fase 2
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos) e não há erros do mod no log.
+- Testado e funcionando: interfaces do Extrator e do Inseridor, fornalha com Principal e Adicional, máquina de maionese, `pl_inspect`, itens dos slots caindo no chão ao quebrar a fornalha, uso manual da fornalha com itens guardados nos slots.
+- Não testado (sem os itens no save): Barril e Cristalário. Teste os dois na Fase 3 (`player_add (BC)12`, `player_add (BC)21`).
+- Corrigido durante o teste local: a estatística de carga (`StatsToIncrementWhenLoaded`) contava a quantidade consumida; agora conta 1 por carga, como o `PlaceInMachine` do jogo.
+- Pedido de mudança do usuário: Extrator e Inseridor viram um bloco só, com entradas laterais e entrega direta (baú → máquina). Virou a nova Fase 3 (`fase-3-inseridor-unico.md`); README e plano mestre (D2, D3, D16, D17) já atualizados.
 
 ---
 

@@ -1,14 +1,14 @@
-# Fase 3: Persistência
+# Fase 4: Persistência
 
 > Leia antes: [`00-plano-mestre.md`](00-plano-mestre.md) (obrigatório), [`README.md`](../../README.md), [`STATUS.md`](STATUS.md).
 
-- **Branch:** `fase-3-persistencia`
-- **PR:** `Fase 3: Persistência`
-- **Depende de:** Fase 2 mesclada.
+- **Branch:** `fase-4-persistencia`
+- **PR:** `Fase 4: Persistência`
+- **Depende de:** Fase 3 mesclada.
 
 ## Objetivo
 
-Os **itens em trânsito** (nas esteiras e em qualquer `TransitSlot`) e os **slots virtuais das máquinas** sobrevivem ao salvar e carregar o jogo, sem duplicar nem perder itens. A configuração dos blocos (direção, slot, etc.) já é salva pelo `modData` desde a Fase 1; esta fase **confirma** isso com testes locais.
+Os **itens em trânsito** (nas esteiras e em qualquer `TransitSlot`, inclusive a mão dos Inseridores) e os **slots virtuais das máquinas** sobrevivem ao salvar e carregar o jogo, sem duplicar nem perder itens. A configuração dos blocos (direção, slot, etc.) já é salva pelo `modData` desde a Fase 1; esta fase **confirma** isso com testes locais.
 
 ## Por que é preciso
 
@@ -48,7 +48,7 @@ public sealed class NodeRuntimeState
     /// <summary>Um por TransitSlot, na mesma ordem de LogisticsNode.Slots. Slots vazios são gravados com ItemRef = -1.</summary>
     public List<SlotState> Slots { get; set; } = new();
     public int Cooldown { get; set; }
-    /// <summary>Ponteiros de rodízio (Divisor, Fase 4). -1 = não usado.</summary>
+    /// <summary>Ponteiros de rodízio (Inseridor: última entrada; Divisor, Fase 5). -1 = não usado.</summary>
     public int InputPointer { get; set; } = -1;
     public int OutputPointer { get; set; } = -1;
 }
@@ -101,13 +101,13 @@ Regras:
 - Um nó só recebe o estado se existir na mesma posição **e** com o mesmo `Kind`. Caso contrário, todos os itens do estado dele viram órfãos.
 - Se o número de slots for diferente, os slots que sobram viram órfãos.
 - `Progress` é limitado a `0..Balance.End` ao importar.
-- `InputPointer` e `OutputPointer` são lidos e gravados por métodos virtuais em `LogisticsNode` (`ExportPointers` / `ImportPointers`), com implementação vazia por padrão. A Fase 4 implementa no Divisor.
+- `InputPointer` e `OutputPointer` são lidos e gravados por métodos virtuais em `LogisticsNode` (`ExportPointers` / `ImportPointers`), com implementação vazia por padrão. Nesta fase, implemente no Inseridor (`InputPointer` = `LastInput`, `-1` = null, senão `(int)Direction`); a Fase 5 implementa no Divisor.
 - Slots virtuais: restaurados na grade (`MachineSlots`), sem verificar se a máquina ainda existe (o Core não sabe). O adaptador remove os órfãos depois (B3).
 - `Version` diferente de 1 → importa nada e devolve todos os itens como órfãos (comportamento seguro).
 
 ### A3. Testes do Core
 
-1. **Ida e volta:** monte uma grade com itens em várias esteiras (progressos diferentes, uma bloqueada), um Extrator com cooldown e slots virtuais de uma máquina; exporte; crie um mundo novo com os mesmos nós vazios; importe; compare item a item (mesma instância via lista externa), progresso, `EntrySide`, `Blocked`, cooldown e slots.
+1. **Ida e volta:** monte uma grade com itens em várias esteiras (progressos diferentes, uma bloqueada), um Inseridor com um item na mão (no meio da ida), outro voltando (`Cooldown` > 0) com `LastInput` definido, e slots virtuais de uma máquina; exporte; crie um mundo novo com os mesmos nós vazios; importe; compare item a item (mesma instância via lista externa), progresso, `EntrySide`, `Blocked`, cooldown, `LastInput` e slots.
 2. Nó que não existe mais no mundo novo: seus itens vão para `orphans` com local e posição corretos.
 3. Nó com o mesmo lugar e tipo diferente: itens viram órfãos.
 4. `Progress` fora do intervalo é corrigido.
@@ -178,7 +178,8 @@ Use uma save de teste e **anote a quantidade de itens** antes de cada teste.
 - [ ] Salve e saia para o menu principal. Carregue a save: os itens estão nas esteiras, com o progresso preservado, e voltam a andar.
 - [ ] Soma das madeiras (baús + esteiras) é a mesma antes e depois.
 - [ ] Fornalha com 3 minérios no slot Principal: salve, carregue, `pl_inspect` mostra os 3 minérios; a fornalha continua quando chegarem os outros.
-- [ ] Direções das esteiras e configurações do Extrator e do Inseridor continuam as mesmas após carregar.
+- [ ] Direções das esteiras e configurações dos Inseridores ("Retirar de" e "Colocar em") continuam as mesmas após carregar.
+- [ ] Baú → Inseridor → baú com o braço no meio do caminho: salve e carregue; o item continua na mão e é entregue, sem duplicar.
 - [ ] Carregue a save, **não salve**, saia e carregue de novo: nada duplicou.
 - [ ] Desinstalar o mod não está no escopo (blocos viram itens de erro); **não** teste isso na sua save principal.
 - [ ] Nenhum erro do mod no log do SMAPI.

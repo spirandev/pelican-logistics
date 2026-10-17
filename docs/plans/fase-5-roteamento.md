@@ -1,18 +1,18 @@
-# Fase 4: Roteamento (Filtros e Divisor)
+# Fase 5: Roteamento (Filtros e Divisor)
 
 > Leia antes: [`00-plano-mestre.md`](00-plano-mestre.md) (obrigatório), [`README.md`](../../README.md) (seções "Filtro", "Divisor", "Regras de conexão", "Ordem horária"), [`STATUS.md`](STATUS.md).
 
-- **Branch:** `fase-4-roteamento`
-- **PR:** `Fase 4: Roteamento`
-- **Depende de:** Fase 3 mesclada.
+- **Branch:** `fase-5-roteamento`
+- **PR:** `Fase 5: Roteamento`
+- **Depende de:** Fase 4 mesclada.
 
 ## Objetivo
 
-Adicionar o **Filtro Comum**, o **Filtro Completo**, o **filtro acoplado** ao Extrator/Inseridor e o **Divisor**, com suas interfaces. Ao final, uma esteira com itens misturados entra num Divisor com filtros nas saídas e cada item vai para o baú certo.
+Adicionar o **Filtro Comum**, o **Filtro Completo**, o **filtro acoplado** ao Inseridor e o **Divisor**, com suas interfaces. Ao final, uma esteira com itens misturados entra num Divisor com filtros nas saídas e cada item vai para o baú certo.
 
 ## Fora de escopo
 
-Ponte, tiers de esteira, Esteira Subterrânea, Regulador (Fase 5); dicas ao passar o mouse (Fase 6).
+Ponte, tiers de esteira, Esteira Subterrânea, Regulador (Fase 6); dicas ao passar o mouse (Fase 7).
 
 ---
 
@@ -29,7 +29,7 @@ Ponte, tiers de esteira, Esteira Subterrânea, Regulador (Fase 5); dicas ao pass
 - **Filtro Completo:** lista de itens, categoria, qualidade, context tags, lista branca ou lista negra.
 
 **Filtro acoplado**
-- Extrator com um filtro **imediatamente à frente** (recebendo dele): o Extrator só retira o que o filtro aceita.
+- Inseridor com um filtro **imediatamente à frente** (recebendo dele): o Inseridor só retira o que o filtro aceita.
 - Filtro **imediatamente atrás** de um Inseridor (entregando a ele): o Inseridor só insere o que o filtro aceita (isso já acontece naturalmente, porque o filtro só deixa passar o que aceita).
 
 **Divisor** (bloco com 4 portas, sem modos, sem direção)
@@ -96,11 +96,12 @@ public sealed class CompleteFilterRule : IFilterRule
 - `Update`: avança com `Balance.FilterSpeed`; no fim → `ctx.PushForward(this, Slot, Facing)`.
 - O Filtro **não** entra no cálculo de curvas como receptor (é sempre reto), mas **é** provedor para a esteira à frente dele.
 
-### A3. Extrator: saídas válidas e acoplamento
+### A3. Inseridor: Filtro como entrada, destino e acoplamento
 
-- `ExtractorNode.IsValidOutput`: passa a aceitar `FilterNode` (além de `BeltNode`).
-- `GetExtractionPredicate(ctx)`: se o nó à frente é `FilterNode f` e `f.InputSide == Facing.Opposite()` (o filtro recebe do Extrator) → `f.Rule.Matches`; senão → aceita tudo.
-- O "pode receber" do Extrator agora deve usar `CanReceiveFrom` do nó à frente.
+Desde a Fase 3, o Inseridor só pega o que o destino aceita (`Fits`) e trata os nós vizinhos de forma genérica (`GetOutgoingSlot` na origem, `CanAccept` no destino). O acoplamento sai disso quase de graça:
+- **Filtro à frente** (destino): `Fits` usa `FilterNode.CanAccept`, que exige `Slot` vazio **e** `Rule.Matches(item)`. Assim o Inseridor só retira do baú o que o filtro aceita.
+- **Filtro atrás ou na lateral** (origem): o `FilterNode` implementa `GetOutgoingSlot` (o próprio `Slot`, quando a frente dele é o Inseridor) e é provedor para a `Topology`.
+- Confira com testes que nada mais é preciso; se for, ajuste só o Inseridor.
 
 ### A4. `Nodes/SplitterNode.cs`
 
@@ -114,9 +115,9 @@ public sealed class CompleteFilterRule : IFilterRule
 
 **Portas** (calculadas em `Topology.Recompute`, **depois** do `InputSide` das esteiras, plano mestre D4):
 - Para cada direção `d` com vizinho `n` em `Position.Offset(d)`:
-  - **Entrada** se `n` é `BeltNode` ou `FilterNode` (Fase 5: saída de Subterrânea) e `n.ProvidesTo(Position)`;
-  - **Saída** se `n` é `BeltNode` ou `FilterNode` (Fase 5: entrada de Subterrânea) e o lado de entrada de `n` é `d.Opposite()` (ou seja, `n` recebe pelo lado virado para o Divisor);
-  - senão, nada. Divisor, Extrator e Inseridor vizinhos não se conectam.
+  - **Entrada** se `n` é `BeltNode` ou `FilterNode` (Fase 6: saída de Subterrânea) e `n.ProvidesTo(Position)`;
+  - **Saída** se `n` é `BeltNode` ou `FilterNode` (Fase 6: entrada de Subterrânea) e o lado de entrada de `n` é `d.Opposite()` (ou seja, `n` recebe pelo lado virado para o Divisor);
+  - senão, nada. Divisor e Inseridor vizinhos não se conectam.
 - Uma esteira encostada no Divisor com uma esteira atrás dela continua reta e **não** vira saída (lateral ignorada). Uma esteira sem nada atrás e com o Divisor na lateral vira **curva** saindo do Divisor. Isso já sai do algoritmo de `InputSide` porque o Divisor é provedor para todos os vizinhos.
 
 **`Accept`**: sempre 0. O Divisor **puxa** (plano mestre D5).
@@ -124,7 +125,7 @@ public sealed class CompleteFilterRule : IFilterRule
 **`Update(ctx)`**:
 1. Se `Slot` tem item: avança com `Balance.SplitterSpeed`; ao chegar ao fim → `Distribute(ctx)`.
 2. Se `Slot` está vazio: **puxa** a próxima entrada. Percorre `Inputs` em ordem horária começando **depois** de `LastInput` (se `LastInput == null`, começa pelo Norte). Para a primeira entrada cujo nó tem um slot com item no fim (`Progress == End`) e cujo destino é o Divisor: tira a pilha inteira daquele slot, coloca no próprio `Slot` com `EntrySide = d`, `LastInput = d`, e para.
-   - Para isso, crie em `LogisticsNode` um método `TransitSlot? GetOutgoingSlot()` que devolve o slot que está entregando pela frente (esteira e filtro: o próprio slot; padrão: null).
+   - Use o `LogisticsNode.GetOutgoingSlot(TilePos target)` criado na Fase 3 (esteira e filtro: o próprio slot, quando a frente deles é o Divisor).
 
 **`Distribute(ctx)`**:
 ```
@@ -150,7 +151,7 @@ Observações:
 - Saídas com filtro que aceitam mas estão ocupadas são puladas e o item vai como excedente para as sem filtro (regra 4).
 - O Divisor **não** junta itens.
 
-**Persistência:** implemente `ExportPointers`/`ImportPointers` (Fase 3) para `LastInput`/`LastOutput` (`-1` = null, senão `(int)Direction`).
+**Persistência:** implemente `ExportPointers`/`ImportPointers` (Fase 4) para `LastInput`/`LastOutput` (`-1` = null, senão `(int)Direction`).
 
 ### A5. Topologia
 
@@ -177,8 +178,8 @@ Observações:
 13. Filtro rápido seguido de esteira lenta: o filtro espera o tile liberar.
 
 **Acoplamento**
-14. Baú com madeira e pedra → Extrator → Filtro (madeira): só madeira sai; a pedra fica no baú; a esteira **não trava**.
-15. Sem acoplamento (filtro depois de uma esteira): a pedra extraída trava a linha (comportamento esperado).
+14. Baú com madeira e pedra → Inseridor → Filtro (madeira): só madeira sai; a pedra fica no baú; a esteira **não trava**.
+15. Sem acoplamento (filtro depois de uma esteira): a pedra retirada trava a linha (comportamento esperado).
 16. Filtro (minério) → Inseridor → fornalha: só minério entra.
 
 **SplitterNode**
@@ -234,7 +235,7 @@ Observações:
   - `ToggleGroupRow` Qualidade: Normal, Prata, Ouro, Irídio;
   - `ToggleGroupRow` Categorias, com esta lista (use as constantes de categoria do `StardewValley.Object` quando existirem e nomes no i18n): Vegetais, Frutas, Flores, Forrageáveis, Sementes, Peixes, Iscas, Lixo, Minerais, Gemas, Minérios e barras, Recursos (madeira, pedra...), Artesanais, Ovos, Leite, Culinária, Fertilizantes;
   - `TextRow` Context tags.
-- Abertura: botão de ação sobre o filtro (como no Extrator). Cada alteração grava no `modData` e atualiza a regra do nó na hora.
+- Abertura: botão de ação sobre o filtro (como no Inseridor). Cada alteração grava no `modData` e atualiza a regra do nó na hora.
 
 ### B6. i18n
 
@@ -262,13 +263,13 @@ Títulos e rótulos das interfaces, nomes das categorias e qualidades, modos.
 
 - [ ] Filtro Comum: clicar abre a interface; escolher Madeira no inventário configura o filtro **sem gastar** a madeira; o ícone da madeira aparece no bloco.
 - [ ] Linha com madeira e pedra passando por um Filtro (madeira) no meio: a madeira passa; a pedra para antes do filtro e trava a linha.
-- [ ] Baú misturado → Extrator → Filtro (madeira): só madeira sai do baú; a pedra fica no baú.
+- [ ] Baú misturado → Inseridor → Filtro (madeira): só madeira sai do baú; a pedra fica no baú.
 - [ ] Filtro Completo: lista branca com a categoria Minerais deixa passar quartzo e não madeira; lista negra com madeira deixa passar tudo menos madeira.
 - [ ] Filtro Completo por qualidade: só chirívias ouro passam.
 - [ ] **Separador clássico:** esteira com 4 tipos de item → Divisor com Filtro (madeira) ao norte, Filtro (pedra) a leste e esteira sem filtro ao sul; cada tipo vai para o seu baú e o resto vai para o sul.
 - [ ] Baú de madeira cheio: a madeira passa a ir para o sul (excedente).
 - [ ] Divisor com 3 saídas sem filtro e itens 1 a 1: os itens se alternam norte → leste → sul (ordem horária).
-- [ ] Divisão de pilhas (o Extrator de Pilha só chega na Fase 5): coloque o Divisor **sem saídas**, deixe as madeiras se acumularem e se juntarem na esteira de entrada, depois coloque 3 esteiras de saída. A pilha se divide igualmente entre elas.
+- [ ] Divisão de pilhas (o Inseridor de Pilha só chega na Fase 6): coloque o Divisor **sem saídas**, deixe as madeiras se acumularem e se juntarem na esteira de entrada, depois coloque 3 esteiras de saída. A pilha se divide igualmente entre elas.
 - [ ] Duas esteiras entrando no Divisor e uma saindo: os fluxos se alternam.
 - [ ] `R` sobre o Divisor não faz nada; sobre o Filtro gira.
 - [ ] Salvar e carregar mantém as regras dos filtros e os itens dentro do Divisor e dos filtros.
