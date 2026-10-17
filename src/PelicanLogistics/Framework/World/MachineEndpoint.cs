@@ -130,7 +130,8 @@ internal sealed class MachineEndpoint : IMachineEndpoint
 
         // Entrada usada nas coletas seguintes (ex.: o Cristalário recomeça com a mesma gema).
         this.machine.lastInputItem.Value = mainItem.Item.getOne();
-        MachineDataUtility.UpdateStats(this.data.StatsToIncrementWhenLoaded, mainItem.Item, required);
+        // Como no PlaceInMachine do jogo: uma carga conta 1, não a quantidade consumida.
+        MachineDataUtility.UpdateStats(this.data.StatsToIncrementWhenLoaded, mainItem.Item, 1);
 
         // Consome manualmente; o que sobrar continua nos slots virtuais.
         mainItem.Item.Stack -= required;
