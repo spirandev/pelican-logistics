@@ -47,29 +47,28 @@ public class PlaceholderPainterTests
     [InlineData(TransferTier.Single, 0)]
     [InlineData(TransferTier.Stack, 8)]
     [InlineData(TransferTier.Configurable, 12)]
-    public void PaintExtractorAndInserter_HaveColorAndDots(TransferTier tier, int markPixels)
+    public void PaintInserter_IsOpaqueBlueSquare_WithTierDots(TransferTier tier, int markPixels)
     {
-        PixelBuffer extractor = PlaceholderPainter.PaintExtractor(tier);
         PixelBuffer inserter = PlaceholderPainter.PaintInserter(tier);
 
-        Assert.Equal(16, extractor.Width);
-        Assert.Equal(16, extractor.Height);
-        Assert.Contains(PlaceholderColors.Extractor, extractor.Pixels);
-        Assert.Contains(PlaceholderColors.Inserter, inserter.Pixels);
-        Assert.True(extractor.Get(0, 15).IsTransparent || extractor.Get(15, 0).IsTransparent);
-        Assert.True(extractor.Get(15, 0).IsTransparent);
-        Assert.Equal(markPixels, extractor.Pixels.Count(p => p == PlaceholderColors.Mark));
+        Assert.Equal(16, inserter.Width);
+        Assert.Equal(16, inserter.Height);
+        Assert.Equal(16 * 16, inserter.CountOpaque());
+        Assert.Equal(PlaceholderColors.Inserter, inserter.Get(8, 12));
         Assert.Equal(markPixels, inserter.Pixels.Count(p => p == PlaceholderColors.Mark));
     }
 
     [Fact]
-    public void PaintExtractor_TrianglePointsNorth()
+    public void PaintInserter_HasSmallTriangleAtNorthEdge()
     {
-        PixelBuffer extractor = PlaceholderPainter.PaintExtractor(TransferTier.Single);
+        PixelBuffer inserter = PlaceholderPainter.PaintInserter(TransferTier.Single);
 
-        int RowWidth(int y) => Enumerable.Range(0, 16).Count(x => extractor.Get(x, y) == PlaceholderColors.Extractor);
+        // O contorno fica na borda; dentro do quadrado, só o triângulo usa a cor escura, e só no topo.
+        int RowWidth(int y) => Enumerable.Range(1, 14).Count(x => inserter.Get(x, y) == PlaceholderColors.Outline);
 
-        Assert.True(RowWidth(4) < RowWidth(12));
+        Assert.True(RowWidth(2) > 0);
+        Assert.True(RowWidth(2) < RowWidth(4));
+        Assert.All(Enumerable.Range(7, 8), y => Assert.Equal(0, RowWidth(y)));
     }
 
     [Fact]

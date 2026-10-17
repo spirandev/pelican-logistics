@@ -31,16 +31,30 @@ public static class PlaceholderPainter
         return buffer;
     }
 
-    /// <summary>Fundo transparente, triângulo laranja apontando para cima; 2 ou 3 pontos no canto para Pilha/Configurável.</summary>
-    public static PixelBuffer PaintExtractor(TransferTier tier)
-    {
-        return PaintTransfer(PlaceholderColors.Extractor, tier);
-    }
-
-    /// <summary>Fundo transparente, triângulo azul apontando para cima; 2 ou 3 pontos no canto para Pilha/Configurável.</summary>
+    /// <summary>
+    /// Quadrado azul com um triângulo pequeno na borda de cima (a frente, o destino) e 2 ou 3 pontos no canto para
+    /// Pilha/Configurável. O braço não faz parte do sprite: o adaptador desenha por cima.
+    /// </summary>
     public static PixelBuffer PaintInserter(TransferTier tier)
     {
-        return PaintTransfer(PlaceholderColors.Inserter, tier);
+        int dots = tier switch
+        {
+            TransferTier.Single => 0,
+            TransferTier.Stack => 2,
+            TransferTier.Configurable => 3,
+            _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Tier inválido."),
+        };
+
+        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+        buffer.FillRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Inserter);
+        buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
+        buffer.FillTriangle(8, 1, 4, 5, 12, 5, PlaceholderColors.Outline);
+
+        // Pontos 2×2 no canto superior esquerdo, longe do triângulo.
+        int[][] dotPositions = { new[] { 2, 2 }, new[] { 2, 5 }, new[] { 2, 8 } };
+        for (int i = 0; i < dots; i++)
+            buffer.FillRect(dotPositions[i][0], dotPositions[i][1], 2, 2, PlaceholderColors.Mark);
+        return buffer;
     }
 
     /// <summary>Seta grande branca apontando para cima, em fundo transparente (seta fantasma de colocação).</summary>
@@ -58,26 +72,5 @@ public static class PlaceholderPainter
         var icon = new PixelBuffer(SpriteSize, SpriteSize * 2);
         icon.Blit(sprite16, (SpriteSize - sprite16.Width) / 2, SpriteSize + ((SpriteSize - sprite16.Height) / 2));
         return icon;
-    }
-
-    private static PixelBuffer PaintTransfer(Rgba color, TransferTier tier)
-    {
-        int dots = tier switch
-        {
-            TransferTier.Single => 0,
-            TransferTier.Stack => 2,
-            TransferTier.Configurable => 3,
-            _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Tier inválido."),
-        };
-
-        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
-        buffer.FillTriangle(8, 0, 0, 15, 16, 15, PlaceholderColors.Outline);
-        buffer.FillTriangle(8, 2, 2, 14, 14, 14, color);
-
-        // Pontos 2×2 no canto superior esquerdo, que o triângulo não cobre.
-        int[][] dotPositions = { new[] { 1, 1 }, new[] { 4, 1 }, new[] { 1, 4 } };
-        for (int i = 0; i < dots; i++)
-            buffer.FillRect(dotPositions[i][0], dotPositions[i][1], 2, 2, PlaceholderColors.Mark);
-        return buffer;
     }
 }
