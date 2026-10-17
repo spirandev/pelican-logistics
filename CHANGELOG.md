@@ -35,7 +35,6 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Alterado
 - Extrator e Inseridor unificados no Inseridor (README "Inseridores"): ele pega atrás (baú, máquina ou esteira) e entrega na frente. O placeholder passa a ser um quadrado azul com um triângulo na borda do destino.
-- Saves das Fases 1 e 2: os Extratores colocados no mapa são trocados por Inseridores ao carregar, na mesma direção e com o mesmo "Retirar de".
 
 ### Removido
-- Extrator (bloco, interface e `ExtractorNode`). Extratores guardados em baús ou no inventário viram itens de erro do jogo.
+- Extrator (bloco, interface e `ExtractorNode`). Extratores de saves das Fases 1 e 2 viram itens de erro do jogo (a migração para Inseridores foi removida na Fase 4).

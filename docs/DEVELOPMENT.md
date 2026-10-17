@@ -189,5 +189,4 @@ No Inseridor, o progresso da mão vai de `0` (na origem) a `600` (no destino) em
 - **Máquinas:** o Inseridor guarda os itens nos **slots virtuais** da máquina (Principal e Adicional) e a aciona quando tudo está completo. Quebrar a máquina solta no chão os itens guardados. Covo e Barril de carvalho não são suportados na alpha.
 - **Esteira:** só recebe por trás. Uma esteira sem nada atrás e com outra (ou um Inseridor) entregando pela lateral vira curva.
 - **Remover:** quebre o bloco com a picareta; ele e o item que carregava (na esteira ou na mão do Inseridor) caem no chão.
-- **Saves das Fases 1 e 2:** ao carregar, cada Extrator colocado no mapa vira um Inseridor no mesmo tile, com a mesma direção e o mesmo "Retirar de" (o log do SMAPI mostra quantos). Extratores guardados em baús ou no inventário **não** são migrados e viram itens de erro do jogo.
 - **Limitação até a Fase 3:** os itens em trânsito, os itens na mão dos Inseridores e os guardados nos slots virtuais somem ao salvar e carregar o jogo (a Fase 4 resolve).

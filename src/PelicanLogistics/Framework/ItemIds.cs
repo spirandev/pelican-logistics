@@ -13,12 +13,6 @@ internal static class ItemIds
     public const string Belt = Prefix + "Belt";
     public const string Inserter = Prefix + "Inserter";
 
-    /// <summary>
-    /// Extrator das Fases 1 e 2, unificado no Inseridor na Fase 3. Usado só para migrar os saves de teste
-    /// (<see cref="World.LegacyMigration"/>): não é registrado nem tratado como bloco do mod.
-    /// </summary>
-    public const string LegacyExtractor = Prefix + "Extractor";
-
     /// <summary>Prefixo do tipo Big Craftable nos IDs qualificados.</summary>
     private const string BigCraftableTypePrefix = "(BC)";
 
@@ -37,7 +31,7 @@ internal static class ItemIds
 
     public static string Qualified(string id) => BigCraftableTypePrefix + id;
 
-    /// <summary>True se o ID qualificado é de um Big Craftable registrado pelo mod (o Extrator antigo não conta).</summary>
+    /// <summary>True se o ID qualificado é de um Big Craftable registrado pelo mod.</summary>
     public static bool IsOurBigCraftable(string? qualifiedItemId)
     {
         return qualifiedItemId != null && QualifiedBlocks.Contains(qualifiedItemId);
