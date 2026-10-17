@@ -146,24 +146,29 @@ internal sealed class ConsoleCommands
             case BeltNode belt:
                 line.Append($" tier={belt.Tier} input={belt.InputSide}");
                 break;
-            case ExtractorNode extractor:
-                line.Append($" tier={extractor.Tier} source={extractor.Source} cooldown={extractor.Cooldown}");
-                break;
             case InserterNode inserter:
-                line.Append($" tier={inserter.Tier} slot={inserter.SlotMode} cooldown={inserter.Cooldown}");
+                line.Append($" tier={inserter.Tier} source={inserter.Source} slot={inserter.SlotMode}");
+                line.Append($" cooldown={inserter.Cooldown} lastInput={inserter.LastInput?.ToString() ?? "-"}");
+                line.Append($" inputs={string.Join(",", inserter.Inputs)}");
                 break;
         }
 
         if (node.Accessory != AccessoryKind.None)
             line.Append($" accessory={node.Accessory}");
 
+        // A mão do Inseridor aparece como "hand=[...]"; os espaços das esteiras, só como "[...]".
+        string prefix = node is InserterNode ? " hand=" : " ";
         foreach (TransitSlot slot in node.Slots)
-        {
-            line.Append(slot.Item == null
-                ? " [vazio]"
-                : $" [{slot.Item.DisplayName} x{slot.Item.Count} {slot.Progress}/{Balance.End} entry={slot.EntrySide}{(slot.Blocked ? " blocked" : "")}]");
-        }
+            line.Append(prefix).Append(DescribeSlot(slot));
 
         return line.ToString();
+    }
+
+    /// <summary>Item, quantidade, progresso (0..600), lado de entrada e se está bloqueado; ou "[vazio]".</summary>
+    private static string DescribeSlot(TransitSlot slot)
+    {
+        return slot.Item == null
+            ? "[vazio]"
+            : $"[{slot.Item.DisplayName} x{slot.Item.Count} {slot.Progress}/{Balance.End} entry={slot.EntrySide}{(slot.Blocked ? " blocked" : "")}]";
     }
 }

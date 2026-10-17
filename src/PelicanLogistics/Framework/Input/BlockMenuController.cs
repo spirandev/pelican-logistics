@@ -47,21 +47,23 @@ internal sealed class BlockMenuController
         ITranslationHelper i18n = this.helper.Translation;
         switch (obj.ItemId)
         {
-            case ItemIds.Extractor:
-                return new ExtractorMenu(i18n, NodeFactory.ReadExtractorSource(obj), source =>
-                {
-                    NodeFactory.WriteExtractorSource(obj, source);
-                    if (this.registry.GetNode(location, pos) is ExtractorNode extractor)
-                        extractor.Source = source;
-                });
-
             case ItemIds.Inserter:
-                return new InserterMenu(i18n, NodeFactory.ReadInserterSlotMode(obj), mode =>
-                {
-                    NodeFactory.WriteInserterSlotMode(obj, mode);
-                    if (this.registry.GetNode(location, pos) is InserterNode inserter)
-                        inserter.SlotMode = mode;
-                });
+                return new InserterMenu(
+                    i18n,
+                    NodeFactory.ReadPickupSource(obj),
+                    source =>
+                    {
+                        NodeFactory.WritePickupSource(obj, source);
+                        if (this.registry.GetNode(location, pos) is InserterNode inserter)
+                            inserter.Source = source;
+                    },
+                    NodeFactory.ReadInserterSlotMode(obj),
+                    mode =>
+                    {
+                        NodeFactory.WriteInserterSlotMode(obj, mode);
+                        if (this.registry.GetNode(location, pos) is InserterNode inserter)
+                            inserter.SlotMode = mode;
+                    });
 
             default:
                 return null;
