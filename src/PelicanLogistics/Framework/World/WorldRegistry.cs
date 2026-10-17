@@ -176,7 +176,7 @@ internal sealed class WorldRegistry
     {
         LogisticsGrid? grid = this.World.Get(KeyOf(location));
         TilePos pos = ToTilePos(tile);
-        if (grid?.MachineSlots.Get(pos) == null)
+        if (grid == null || grid.MachineSlots.Get(pos) == null)
             return;
 
         DropItems(location, tile, grid.MachineSlots.RemoveMachine(pos));

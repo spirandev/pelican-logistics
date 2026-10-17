@@ -18,6 +18,7 @@ public sealed class ModEntry : Mod
     private ModConfig config = null!;
     private WorldRegistry registry = null!;
     private PlacementController placement = null!;
+    private BlockMenuController menus = null!;
 
     public override void Entry(IModHelper helper)
     {
@@ -25,6 +26,7 @@ public sealed class ModEntry : Mod
 
         this.registry = new WorldRegistry(this.Monitor, () => this.placement.CurrentDirection);
         this.placement = new PlacementController(helper, this.config, this.registry);
+        this.menus = new BlockMenuController(helper, this.registry);
         var renderer = new NodeRenderer(this.registry, this.placement);
 
         new ContentRegistrar(helper, this.config).Register();
@@ -37,6 +39,7 @@ public sealed class ModEntry : Mod
         helper.Events.GameLoop.UpdateTicked += this.OnUpdateTicked;
         helper.Events.World.ObjectListChanged += this.OnObjectListChanged;
         helper.Events.Input.ButtonsChanged += this.OnButtonsChanged;
+        helper.Events.Input.ButtonPressed += this.OnButtonPressed;
         helper.Events.Display.RenderedWorld += this.OnRenderedWorld;
     }
 
@@ -86,6 +89,11 @@ public sealed class ModEntry : Mod
     private void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
     {
         this.placement.OnButtonsChanged(e);
+    }
+
+    private void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+    {
+        this.menus.OnButtonPressed(e);
     }
 
     private void OnRenderedWorld(object? sender, RenderedWorldEventArgs e)
