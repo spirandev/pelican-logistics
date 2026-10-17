@@ -1,5 +1,6 @@
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
+using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Simulation;
 
@@ -11,6 +12,9 @@ public sealed class GridBuilder
     public LogisticsGrid Grid { get; } = new();
 
     public FakeEndpoints Endpoints { get; } = new();
+
+    /// <summary>Máquinas da grade; <see cref="FakeMachine.Advance"/> é chamado a cada tick, depois da grade.</summary>
+    public List<FakeMachine> Machines { get; } = new();
 
     public GridBuilder Belt(int x, int y, Direction facing, BeltTier tier = BeltTier.Basic)
     {
@@ -24,9 +28,28 @@ public sealed class GridBuilder
         return this;
     }
 
+    public GridBuilder Extractor(int x, int y, Direction facing, ExtractorSource source, TransferTier tier = TransferTier.Single)
+    {
+        this.Grid.Add(new ExtractorNode(new TilePos(x, y), facing, tier) { Source = source });
+        return this;
+    }
+
     public GridBuilder Inserter(int x, int y, Direction facing, TransferTier tier = TransferTier.Single)
     {
         this.Grid.Add(new InserterNode(new TilePos(x, y), facing, tier));
+        return this;
+    }
+
+    public GridBuilder Inserter(int x, int y, Direction facing, InserterSlotMode mode, TransferTier tier = TransferTier.Single)
+    {
+        this.Grid.Add(new InserterNode(new TilePos(x, y), facing, tier) { SlotMode = mode });
+        return this;
+    }
+
+    public GridBuilder Machine(int x, int y, FakeMachine machine)
+    {
+        this.Endpoints.Endpoints[new TilePos(x, y)] = machine;
+        this.Machines.Add(machine);
         return this;
     }
 
@@ -48,11 +71,19 @@ public sealed class GridBuilder
     public GridBuilder Run(int ticks)
     {
         for (int i = 0; i < ticks; i++)
+        {
             this.Grid.Tick(this.Endpoints);
+            foreach (FakeMachine machine in this.Machines)
+                machine.Advance();
+        }
+
         return this;
     }
 
     public BeltNode BeltAt(int x, int y) => this.NodeAt<BeltNode>(x, y);
+
+    /// <summary>Slots virtuais da máquina no tile, ou null se não há nada guardado.</summary>
+    public VirtualSlots? SlotsAt(int x, int y) => this.Grid.MachineSlots.Get(new TilePos(x, y));
 
     public T NodeAt<T>(int x, int y)
         where T : LogisticsNode
