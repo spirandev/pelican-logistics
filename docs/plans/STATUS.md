@@ -10,8 +10,8 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
-| 4: Persistência | Aguardando teste local | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | |
-| 5: Roteamento | Aguardando teste local | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | |
+| 4: Persistência | Concluída | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | Compila contra o jogo; salvar/carregar não testado no jogo (ver pendências) |
+| 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
 | 6: Itens restantes | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
@@ -53,12 +53,17 @@ Formato sugerido:
 - [x] Ajuste: remover a migração dos Extratores (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource` e a chamada no `WorldRegistry.Rebuild`). O usuário não tem mais saves com Extratores e não vai precisar dela. A proteção do `Added` (ignorar tile que já tem nó) pode ficar. **Feito na Fase 4.**
 - Observação de desempenho (não é bug): sem nada para pegar (ex.: baú só com madeira abastecendo uma fornalha), o Inseridor testa todas as pilhas do baú contra as regras da máquina a cada tick. Se o teste de desempenho da Fase 7 mostrar queda de FPS, fazer o Inseridor esperar alguns ticks antes de tentar de novo depois de uma tentativa sem sucesso.
 
-### Da fase 5 (primeiro teste local, corrigido na própria branch)
-- [x] Bug na interface: em 1366×768, a interface do Filtro Completo cortava a parte de baixo (só apareciam as categorias até "Artesanais, Ovos..."). Agora ela tem duas colunas (cerca de 1224×630 pixels).
-- [x] Pedido de mudança: o Inseridor precisa funcionar com todos os blocos, como funciona com baús e máquinas. Ex.: baú → Inseridor → esteira → Divisor → Inseridor → fornalha não funcionava do Divisor para o Inseridor; baú → Inseridor → filtro → Divisor → Inseridor → fornalha também precisa funcionar. Agora o Inseridor é entrada e saída do Divisor (README "Divisor"; plano mestre D3 e D4 atualizados).
-
 ### Da fase 4
-- Nenhuma pendência registrada. O PR #5 foi mesclado sem o resultado do teste local nesta página; a linha da Fase 4 continua "Aguardando teste local" até o usuário registrar o teste.
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos) e os 252 testes do Core passam. As "APIs a confirmar" foram conferidas no código descompilado: `GetOrCreateGlobalInventory`, `Inventory.Add`/`Clear`/enumeração e `Farm.GetMainFarmHouseEntry()` existem, e o jogo grava e restaura os inventários globais no save (`SaveGame`, como os baús Junimo; inventários vazios são removidos antes de salvar).
+- Não testado no jogo: salvar e carregar (itens em trânsito, mão do Inseridor, slots virtuais, não duplicar ao carregar sem salvar). O usuário não quis usar a save principal nem montar uma save nova só para isso; o teste fica para o uso normal do mod, e um erro encontrado jogando vira pendência da fase em andamento.
+
+### Da fase 5
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos), os 336 testes do Core passam e não há erros do mod no log.
+- Testado e funcionando (2026-10-18, 1366×768): Filtro Comum (configurar sem gastar o item, ícone no bloco, item recusado trava a linha), filtro acoplado ao Inseridor, Filtro Completo (lista branca por categoria, lista negra, qualidade, campo de context tags), Divisor (separador clássico, excedente com baú cheio, ordem horária, divisão de pilha, duas entradas), Inseridor como entrada e saída do Divisor, `R` no Filtro e no Divisor.
+- Corrigido durante o primeiro teste local, na própria branch:
+  - Bug na interface: em 1366×768, a interface do Filtro Completo cortava a parte de baixo (só apareciam as categorias até "Artesanais, Ovos..."). Agora ela tem duas colunas (cerca de 1224×630 pixels).
+  - Pedido de mudança: o Inseridor precisa funcionar com todos os blocos, como funciona com baús e máquinas. Ex.: baú → Inseridor → esteira → Divisor → Inseridor → fornalha não funcionava do Divisor para o Inseridor; baú → Inseridor → filtro → Divisor → Inseridor → fornalha também precisa funcionar. Agora o Inseridor é entrada e saída do Divisor (README "Divisor"; plano mestre D3 e D4 atualizados).
+- Não testado: salvar e carregar das regras dos filtros e dos itens dentro do Divisor e dos filtros (mesmo motivo da Fase 4). O placeholder da esteira em curva (`a739034`) foi compilado depois do teste e ainda não foi visto no jogo.
 
 ---
 
