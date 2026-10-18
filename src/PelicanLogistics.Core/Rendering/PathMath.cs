@@ -48,6 +48,16 @@ public static class PathMath
         return ((float)(cx + (Radius * Math.Cos(angle))), (float)(cy + (Radius * Math.Sin(angle))));
     }
 
+    /// <summary>
+    /// Posição do item no Divisor, que só conhece a saída ao distribuir: do meio da borda de entrada ao centro na
+    /// primeira metade do progresso, e parado no centro na segunda.
+    /// </summary>
+    public static (float X, float Y) GetHubPosition(Direction entrySide, int progress)
+    {
+        double t = Math.Clamp(progress / (double)Balance.End * 2, 0.0, 1.0);
+        return Lerp(EdgeMidpoint(entrySide), (0.5, 0.5), t);
+    }
+
     /// <summary>Meio da borda do tile no lado indicado.</summary>
     public static (float X, float Y) GetEdgeMidpoint(Direction side)
     {

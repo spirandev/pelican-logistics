@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using PelicanLogistics.Core.Endpoints;
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
@@ -151,6 +153,13 @@ internal sealed class ConsoleCommands
                 line.Append($" cooldown={inserter.Cooldown} lastInput={inserter.LastInput?.ToString() ?? "-"}");
                 line.Append($" inputs={string.Join(",", inserter.Inputs)}");
                 break;
+            case FilterNode filter:
+                line.Append($" rule={DescribeRule(filter.Rule)}");
+                break;
+            case SplitterNode splitter:
+                line.Append($" inputs={DescribeSides(splitter.Inputs)} outputs={DescribeSides(splitter.Outputs)}");
+                line.Append($" lastInput={splitter.LastInput?.ToString() ?? "-"} lastOutput={splitter.LastOutput?.ToString() ?? "-"}");
+                break;
         }
 
         if (node.Accessory != AccessoryKind.None)
@@ -162,6 +171,38 @@ internal sealed class ConsoleCommands
             line.Append(prefix).Append(DescribeSlot(slot));
 
         return line.ToString();
+    }
+
+    /// <summary>Regra do filtro em uma linha, ex.: "Common((O)388)" ou "Complete(Whitelist items=(O)388 categories=-75)".</summary>
+    private static string DescribeRule(IFilterRule rule)
+    {
+        switch (rule)
+        {
+            case CommonFilterRule common:
+                return $"Common({common.QualifiedItemId ?? "-"})";
+
+            case CompleteFilterRule complete:
+            {
+                var text = new StringBuilder($"Complete({complete.Mode}");
+                if (complete.ItemIds.Count > 0)
+                    text.Append($" items={string.Join(",", complete.ItemIds)}");
+                if (complete.Categories.Count > 0)
+                    text.Append($" categories={string.Join(",", complete.Categories)}");
+                if (complete.Qualities.Count > 0)
+                    text.Append($" qualities={string.Join(",", complete.Qualities)}");
+                if (complete.ContextTags.Count > 0)
+                    text.Append($" tags={string.Join(",", complete.ContextTags)}");
+                return text.Append(')').ToString();
+            }
+
+            default:
+                return rule.GetType().Name;
+        }
+    }
+
+    private static string DescribeSides(IReadOnlyList<Direction> sides)
+    {
+        return sides.Count > 0 ? string.Join(",", sides) : "-";
     }
 
     /// <summary>Item, quantidade, progresso (0..600), lado de entrada e se está bloqueado; ou "[vazio]".</summary>

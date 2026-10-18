@@ -16,10 +16,13 @@ namespace PelicanLogistics.Framework.Content;
 /// Folha de ícones dos Big Craftables (<see cref="IconSheetAssetName"/>): 8 células por linha, cada uma com
 /// 16×32 pixels. Índices:
 /// <code>
-/// | Índice | Item      |
-/// |--------|-----------|
-/// | 0      | Esteira   |
-/// | 1      | Inseridor |
+/// | Índice | Item            |
+/// |--------|-----------------|
+/// | 0      | Esteira         |
+/// | 1      | Inseridor       |
+/// | 2      | Filtro Comum    |
+/// | 3      | Filtro Completo |
+/// | 4      | Divisor         |
 /// </code>
 /// As próximas fases acrescentam índices no fim de <see cref="Blocks"/>.
 /// </remarks>
@@ -37,9 +40,13 @@ internal static class PlaceholderTextures
     {
         (ItemIds.Belt, () => PlaceholderPainter.PaintBelt(BeltTier.Basic)),
         (ItemIds.Inserter, () => PlaceholderPainter.PaintInserter(TransferTier.Single)),
+        (ItemIds.FilterCommon, () => PlaceholderPainter.PaintFilter(false)),
+        (ItemIds.FilterComplete, () => PlaceholderPainter.PaintFilter(true)),
+        (ItemIds.Splitter, () => PlaceholderPainter.PaintSplitter()),
     };
 
     private static readonly Dictionary<string, Texture2D> WorldSprites = new();
+    private static readonly Dictionary<(BeltTier Tier, bool FromLeft), Texture2D> BeltCurveSprites = new();
     private static Texture2D? ghostArrow;
     private static Texture2D? pixel;
 
@@ -83,6 +90,21 @@ internal static class PlaceholderTextures
             Func<PixelBuffer> paint = Blocks.First(b => b.ItemId == itemId).Paint;
             texture = ToTexture(paint());
             WorldSprites[itemId] = texture;
+        }
+
+        return texture;
+    }
+
+    /// <summary>
+    /// Sprite da esteira em curva (16×16, apontando para o norte, recebendo pelo oeste se 'fromLeft', senão pelo leste).
+    /// Criado no primeiro uso e guardado em cache.
+    /// </summary>
+    public static Texture2D GetBeltCurveSprite(BeltTier tier, bool fromLeft)
+    {
+        if (!BeltCurveSprites.TryGetValue((tier, fromLeft), out Texture2D? texture))
+        {
+            texture = ToTexture(PlaceholderPainter.PaintBeltCurve(tier, fromLeft));
+            BeltCurveSprites[(tier, fromLeft)] = texture;
         }
 
         return texture;

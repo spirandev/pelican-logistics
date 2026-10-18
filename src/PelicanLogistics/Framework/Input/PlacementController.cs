@@ -87,7 +87,7 @@ internal sealed class PlacementController
         return Game1.player?.ActiveObject is SObject obj && ItemIds.IsOurBlock(obj) && ItemIds.IsDirectional(obj.ItemId);
     }
 
-    /// <summary>Nós sem direção (Divisor, Fase 4) não giram.</summary>
+    /// <summary>Nós sem direção (Divisor) não giram.</summary>
     private static bool IsDirectional(LogisticsNode node)
     {
         return node.Kind != NodeKind.Splitter;

@@ -1,3 +1,4 @@
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Simulation;
@@ -181,6 +182,96 @@ public class FullFlowTests
         Assert.Equal(0, oreChest.CountTotal());
         Assert.Equal(0, coalChest.CountTotal());
         Assert.Equal(0, g.CountInTransit());
+    }
+
+    [Fact]
+    public void ClassicSorter_SplitterWithThreeFilteredOutputs_30ItemsOf4Types_EachEndsInTheRightChest_NothingLostOrCreated()
+    {
+        // Baú misto → Inseridor → esteiras → Divisor. Saídas: norte = Filtro (madeira), leste = Filtro (pedra),
+        // sul = Filtro Completo em lista negra (tudo menos madeira e pedra). Cada saída: esteira → Inseridor → baú.
+        const string wood = "(O)388";
+        const string stone = "(O)390";
+        const string clay = "(O)330";
+        var source = new FakeChest(
+            36,
+            new FakeItem(wood, 4),
+            new FakeItem(FakeMachine.Ids.Coal, 5),
+            new FakeItem(stone, 6),
+            new FakeItem(clay, 3),
+            new FakeItem(wood, 4),
+            new FakeItem(FakeMachine.Ids.Coal, 2),
+            new FakeItem(stone, 6));
+        var woodChest = new FakeChest();
+        var stoneChest = new FakeChest();
+        var restChest = new FakeChest();
+        var rest = new CompleteFilterRule { Mode = FilterMode.Blacklist, ItemIds = { wood, stone } };
+        var g = new GridBuilder()
+            .Chest(0, 5, source)
+            .Inserter(1, 5, Direction.East)
+            .Belt(2, 5, Direction.East)
+            .Belt(3, 5, Direction.East)
+            .Belt(4, 5, Direction.East)
+            .Splitter(5, 5)
+            .Filter(5, 4, Direction.North, wood)
+            .Belt(5, 3, Direction.North)
+            .Inserter(5, 2, Direction.North)
+            .Chest(5, 1, woodChest)
+            .Filter(6, 5, Direction.East, stone)
+            .Belt(7, 5, Direction.East)
+            .Inserter(8, 5, Direction.East)
+            .Chest(9, 5, stoneChest)
+            .Filter(5, 6, Direction.South, rest)
+            .Belt(5, 7, Direction.South)
+            .Inserter(5, 8, Direction.South)
+            .Chest(5, 9, restChest);
+
+        int total = source.CountTotal();
+        Assert.Equal(30, total);
+        for (int tick = 0; tick < 4000; tick++)
+        {
+            g.Run(1);
+            Assert.Equal(total, source.CountTotal() + g.CountInTransit() + woodChest.CountTotal() + stoneChest.CountTotal() + restChest.CountTotal());
+        }
+
+        Assert.Equal(0, source.CountTotal());
+        Assert.Equal(0, g.CountInTransit());
+        Assert.Equal(8, woodChest.CountById(wood));
+        Assert.Equal(8, woodChest.CountTotal());
+        Assert.Equal(12, stoneChest.CountById(stone));
+        Assert.Equal(12, stoneChest.CountTotal());
+        Assert.Equal(7, restChest.CountById(FakeMachine.Ids.Coal));
+        Assert.Equal(3, restChest.CountById(clay));
+        Assert.Equal(10, restChest.CountTotal());
+    }
+
+    [Fact]
+    public void ClassicSorter_WoodChestFull_WoodOverflowsToTheUnfilteredOutput()
+    {
+        // Norte = Filtro (madeira) → Inseridor → baú de madeira com 1 slot já cheio; sul = esteira → Inseridor → baú do resto.
+        const string wood = "(O)388";
+        var source = new FakeChest(36, new FakeItem(wood, 6));
+        var woodChest = new FakeChest(1, new FakeItem("(O)390", 1, maxStack: 1));
+        var restChest = new FakeChest();
+        var g = new GridBuilder()
+            .Chest(0, 5, source)
+            .Inserter(1, 5, Direction.East)
+            .Belt(2, 5, Direction.East)
+            .Belt(3, 5, Direction.East)
+            .Belt(4, 5, Direction.East)
+            .Splitter(5, 5)
+            .Filter(5, 4, Direction.North, wood)
+            .Inserter(5, 3, Direction.North)
+            .Chest(5, 2, woodChest)
+            .Belt(5, 6, Direction.South)
+            .Inserter(5, 7, Direction.South)
+            .Chest(5, 8, restChest);
+
+        g.Run(3000);
+
+        // A primeira madeira fica parada no filtro; as outras vão como excedente para o sul.
+        Assert.Equal(wood, g.FilterAt(5, 4).Slot.Item!.QualifiedItemId);
+        Assert.Equal(5, restChest.CountById(wood));
+        Assert.Equal(0, source.CountTotal());
     }
 
     private static int CountInTransit(GridBuilder g, string id)

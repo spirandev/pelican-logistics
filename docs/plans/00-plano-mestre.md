@@ -158,8 +158,8 @@ O README define o comportamento. Algumas situações não estão cobertas por el
 |---|---|---|
 | D1 | Rotação | Tecla configurável (padrão `R`). Segurando um bloco do mod: gira a direção de colocação. Com a mão livre e o cursor sobre um bloco direcional: gira o bloco. Ao segurar um bloco, uma seta fantasma mostra a direção no tile do cursor. |
 | D2 | Direção dos blocos | Esteira, Filtro, Subterrânea: a direção é o sentido do fluxo. **Inseridor**: a direção aponta para o **destino** (frente). Baú ou máquina de origem só **atrás**; esteiras (e Filtro, saída de Subterrânea) que terminam no Inseridor podem chegar por trás ou pelas laterais. |
-| D3 | Destino do Inseridor | Baú, máquina, ou Esteira/Filtro/entrada de Subterrânea que recebe pelo lado virado para o Inseridor. Inseridor e Divisor à frente não são destino. |
-| D4 | Portas do Divisor | Entradas e saídas do Divisor só podem ser Esteira, Filtro ou Esteira Subterrânea. Divisor encostado em Divisor ou Inseridor não se conecta. |
+| D3 | Destino do Inseridor | Baú, máquina, Divisor, ou Esteira/Filtro/entrada de Subterrânea que recebe pelo lado virado para o Inseridor. Inseridor à frente não é destino. (Divisor como destino e origem: pedido do usuário no teste da Fase 5.) |
+| D4 | Portas do Divisor | Entradas e saídas do Divisor podem ser Esteira, Filtro, Esteira Subterrânea ou Inseridor (entrada: apontando para o Divisor; saída: com a traseira virada para ele). O Divisor puxa da mão do Inseridor de entrada e entrega na mão do de saída só o que ele pegaria agora. Divisor encostado em Divisor, ou na lateral de um Inseridor, não se conecta. |
 | D5 | Divisor puxa | O Divisor **puxa** os itens das entradas (em ordem horária), em vez de as entradas empurrarem. Isso garante o rodízio justo das entradas. |
 | D6 | Filtro Comum e qualidade | O Filtro Comum compara apenas o ID do item; **qualquer qualidade** passa. Qualidade é critério do Filtro Completo. |
 | D7 | Regulador por item | Itens sem limite definido na lista **não são limitados**. |

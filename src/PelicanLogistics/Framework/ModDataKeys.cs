@@ -14,6 +14,9 @@ internal static class ModDataKeys
     /// <summary>Qual slot o Inseridor abastece em máquinas: "Auto" | "Main" | "Additional".</summary>
     public const string InserterSlotMode = Prefix + "InserterSlotMode";
 
+    /// <summary>Regra do Filtro Comum ou do Filtro Completo, em JSON (<c>FilterRuleSerializer</c>).</summary>
+    public const string FilterRule = Prefix + "FilterRule";
+
     /// <summary>Chaves de configuração (tudo menos a direção), apagadas quando o bloco é colocado.</summary>
-    public static readonly string[] Config = { PickupSource, InserterSlotMode };
+    public static readonly string[] Config = { PickupSource, InserterSlotMode, FilterRule };
 }

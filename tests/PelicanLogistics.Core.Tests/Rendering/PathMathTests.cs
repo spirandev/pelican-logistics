@@ -76,4 +76,19 @@ public class PathMathTests
         Assert.Equal((1f, 0.5f), PathMath.GetPosition(Direction.West, Direction.East, Balance.End * 2));
         Assert.Equal((0f, 0.5f), PathMath.GetPosition(Direction.West, Direction.East, -10));
     }
+
+    [Theory]
+    [InlineData(Direction.West, 0, 0f, 0.5f)]
+    [InlineData(Direction.West, Balance.End / 4, 0.25f, 0.5f)]
+    [InlineData(Direction.West, Balance.End / 2, 0.5f, 0.5f)]
+    [InlineData(Direction.West, Balance.End, 0.5f, 0.5f)]
+    [InlineData(Direction.North, 0, 0.5f, 0f)]
+    [InlineData(Direction.South, Balance.End / 4, 0.5f, 0.75f)]
+    public void Hub_GoesFromEntryEdgeToCenterInTheFirstHalf_ThenStaysInTheCenter(Direction entry, int progress, float x, float y)
+    {
+        (float px, float py) = PathMath.GetHubPosition(entry, progress);
+
+        Assert.Equal(x, px, Tolerance);
+        Assert.Equal(y, py, Tolerance);
+    }
 }

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Rendering;
@@ -25,8 +27,14 @@ internal sealed class NodeRenderer
     private const float HandDepthOffset = 0.00002f;
     private const float HandItemDepthOffset = 0.00003f;
 
+    /// <summary>Ícone do item configurado no Filtro Comum: abaixo do item em trânsito.</summary>
+    private const float FilterIconDepthOffset = 0.000005f;
+
     /// <summary>Escala do ícone do item em trânsito (metade do tamanho no inventário).</summary>
     private const float ItemScale = 0.5f;
+
+    /// <summary>Escala do ícone do item configurado no Filtro Comum.</summary>
+    private const float FilterIconScale = 0.35f;
 
     /// <summary>Largura do traço do braço, em pixels de tela.</summary>
     private const float ArmWidth = 8f;
@@ -46,6 +54,9 @@ internal sealed class NodeRenderer
 
     private readonly WorldRegistry registry;
     private readonly PlacementController placement;
+
+    /// <summary>Ícones dos itens configurados nos Filtros Comuns, por ID qualificado (só para o desenho).</summary>
+    private readonly Dictionary<string, Item> filterIcons = new(StringComparer.Ordinal);
 
     public NodeRenderer(WorldRegistry registry, PlacementController placement)
     {
@@ -82,23 +93,69 @@ internal sealed class NodeRenderer
         // Profundidade: abaixo do jogador quando ele está ao sul do bloco. Valor a ajustar no teste local.
         float baseDepth = Math.Max(0f, y * Game1.tileSize / 10000f) + 0.0001f;
 
+        // O Divisor não tem direção: o sprite nunca gira. A esteira em curva tem um sprite próprio.
+        float rotation = ItemIds.IsDirectional(obj.ItemId) ? RotationOf(facing) : 0f;
+        Texture2D sprite = node is BeltNode { IsCurve: true } belt
+            ? PlaceholderTextures.GetBeltCurveSprite(belt.Tier, belt.InputSide == belt.Facing.CounterClockwise())
+            : PlaceholderTextures.GetWorldSprite(obj.ItemId);
         b.Draw(
-            PlaceholderTextures.GetWorldSprite(obj.ItemId),
+            sprite,
             topLeft + TileCenter,
             null,
             Color.White * alpha,
-            RotationOf(facing),
+            rotation,
             SpriteOrigin,
             SpriteScale,
             SpriteEffects.None,
             baseDepth);
 
-        if (node is InserterNode inserter)
-            DrawArm(b, topLeft, ArmMath.GetArmAngle(inserter), inserter.Hand.Item as GameItem, alpha, baseDepth);
-        else if (node != null)
-            DrawTransitItems(b, node, topLeft, baseDepth);
-        else if (obj.ItemId == ItemIds.Inserter)
-            DrawArm(b, topLeft, ArmMath.AngleOf(facing.Opposite()), null, alpha, baseDepth); // prévia: braço parado apontando para trás
+        switch (node)
+        {
+            case InserterNode inserter:
+                DrawArm(b, topLeft, ArmMath.GetArmAngle(inserter), inserter.Hand.Item as GameItem, alpha, baseDepth);
+                break;
+
+            case SplitterNode splitter:
+                DrawSplitterItem(b, splitter, topLeft, baseDepth);
+                break;
+
+            case FilterNode filter:
+                if (filter.Rule is CommonFilterRule { QualifiedItemId: { } id })
+                    DrawItem(b, this.GetFilterIcon(id), topLeft + TileCenter, FilterIconScale, baseDepth + FilterIconDepthOffset);
+                DrawTransitItems(b, node, topLeft, baseDepth);
+                break;
+
+            case not null:
+                DrawTransitItems(b, node, topLeft, baseDepth);
+                break;
+
+            default:
+                if (obj.ItemId == ItemIds.Inserter)
+                    DrawArm(b, topLeft, ArmMath.AngleOf(facing.Opposite()), null, alpha, baseDepth); // prévia: braço parado apontando para trás
+                break;
+        }
+    }
+
+    /// <summary>Ícone de um item pelo ID, criado no primeiro uso.</summary>
+    private Item GetFilterIcon(string qualifiedItemId)
+    {
+        if (!this.filterIcons.TryGetValue(qualifiedItemId, out Item? icon))
+        {
+            icon = ItemRegistry.Create(qualifiedItemId);
+            this.filterIcons[qualifiedItemId] = icon;
+        }
+
+        return icon;
+    }
+
+    /// <summary>Item no Divisor: da entrada ao centro; a saída só é conhecida ao distribuir (<see cref="PathMath.GetHubPosition"/>).</summary>
+    private static void DrawSplitterItem(SpriteBatch b, SplitterNode splitter, Vector2 topLeft, float baseDepth)
+    {
+        if (splitter.Slot.Item is not GameItem item)
+            return;
+
+        (float px, float py) = PathMath.GetHubPosition(splitter.Slot.EntrySide, splitter.Slot.Progress);
+        DrawItem(b, item.Item, topLeft + new Vector2(px * Game1.tileSize, py * Game1.tileSize), ItemScale, baseDepth + ItemDepthOffset);
     }
 
     /// <summary>Itens em trânsito de uma esteira, ao longo do caminho da entrada até a saída.</summary>
@@ -110,7 +167,7 @@ internal sealed class NodeRenderer
                 continue;
 
             (float px, float py) = PathMath.GetPosition(slot.EntrySide, node.Facing, slot.Progress);
-            DrawItem(b, item, topLeft + new Vector2(px * Game1.tileSize, py * Game1.tileSize), baseDepth + ItemDepthOffset);
+            DrawItem(b, item.Item, topLeft + new Vector2(px * Game1.tileSize, py * Game1.tileSize), ItemScale, baseDepth + ItemDepthOffset);
         }
     }
 
@@ -136,12 +193,12 @@ internal sealed class NodeRenderer
         b.Draw(pixel, hand, null, color, 0f, PixelCenter, HandSize, SpriteEffects.None, baseDepth + HandDepthOffset);
 
         if (item != null)
-            DrawItem(b, item, hand, baseDepth + HandItemDepthOffset);
+            DrawItem(b, item.Item, hand, ItemScale, baseDepth + HandItemDepthOffset);
     }
 
     /// <summary>Ícone do item centralizado em 'center'. <c>drawInMenu</c> desenha numa caixa de 64×64 a partir do canto indicado.</summary>
-    private static void DrawItem(SpriteBatch b, GameItem item, Vector2 center, float depth)
+    private static void DrawItem(SpriteBatch b, Item item, Vector2 center, float scale, float depth)
     {
-        item.Item.drawInMenu(b, center - TileCenter, ItemScale, 1f, depth, StackDrawType.Hide, Color.White, false);
+        item.drawInMenu(b, center - TileCenter, scale, 1f, depth, StackDrawType.Hide, Color.White, false);
     }
 }

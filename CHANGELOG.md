@@ -34,8 +34,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Mod: `pl_dump` e `pl_inspect` mostram a mão, a última entrada e as entradas do Inseridor.
 - Core: `RuntimeStateSerializer` exporta e importa o estado em tempo de execução (itens em trânsito, mão, volta do braço e última entrada do Inseridor, slots virtuais); itens sem destino viram órfãos.
 - Mod: itens nas esteiras, na mão dos Inseridores e nos slots virtuais sobrevivem ao salvar e carregar (`SaveManager`: estado em JSON e itens num inventário global do jogo). Itens órfãos caem no chão, com aviso no log.
+- Core: regras de filtro (`CommonFilterRule`: um item, qualquer qualidade; `CompleteFilterRule`: itens, categorias, qualidades e context tags, em lista branca ou negra) e `FilterRuleSerializer` (JSON tolerante a dados corrompidos).
+- Core: Filtro (`FilterNode`), bloco de esteira sempre reto e rápido que só deixa entrar o que a regra aceita; filtro acoplado ao Inseridor (só retira o que o filtro à frente aceita).
+- Core: Divisor (`SplitterNode`): portas calculadas pela `Topology`, puxa as entradas em rodízio horário, prioridade para saídas com filtro, divisão igual, excedente para as saídas sem filtro e trava sem destino; ponteiros de rodízio salvos no save.
+- Core: placeholders do Filtro Comum, do Filtro Completo e do Divisor; caminho do item no Divisor (`PathMath.GetHubPosition`).
+- Mod: Filtro Comum, Filtro Completo e Divisor registrados, à venda no Clint por 0g e no `pl_give`; regra dos filtros no `modData`.
+- Mod: interfaces do Filtro Comum (escolha do item pelo inventário, sem gastá-lo) e do Filtro Completo (modo, itens, qualidades, categorias e context tags), com as linhas novas `ItemPickerRow`, `ItemListRow`, `ToggleGroupRow` e `TextRow`.
+- Mod: desenho do Filtro (com o ícone do item do Filtro Comum) e do Divisor (sem rotação); `pl_dump` mostra a regra do filtro e as portas e ponteiros do Divisor.
+- Core e Mod: placeholder próprio da esteira em curva (traço em L da lateral de entrada até a frente, com as setas do tier).
 
 ### Alterado
+- Interfaces: o botão OK fica no topo, ao lado do título, e a caixa se ajusta à linha mais larga (o inventário dos filtros).
+- O Inseridor se conecta ao Divisor: apontando para ele é uma entrada (o Divisor puxa da mão), com a traseira virada para ele é uma saída (o Divisor entrega na mão só o que o Inseridor pegaria). Um Divisor na lateral do Inseridor continua sem conexão.
+- Interfaces em colunas: a do Filtro Completo usa duas colunas para caber em 1280×720 e 1366×768.
 - Extrator e Inseridor unificados no Inseridor (README "Inseridores"): ele pega atrás (baú, máquina ou esteira) e entrega na frente. O placeholder passa a ser um quadrado azul com um triângulo na borda do destino.
 
 ### Removido

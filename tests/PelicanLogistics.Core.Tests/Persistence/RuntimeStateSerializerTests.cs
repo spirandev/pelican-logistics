@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
@@ -312,6 +313,76 @@ public class RuntimeStateSerializerTests
     }
 
     [Fact]
+    public void RoundTrip_SplitterPointersAndItem_AndFilterSlot()
+    {
+        var world = new LogisticsWorld();
+        var farm = new GridBuilder(world.GetOrCreate("Farm"));
+
+        // Entrada a oeste; saídas ao norte (filtro de madeira) e ao sul. Duas madeiras passam, a terceira fica no meio.
+        farm.Splitter(5, 5)
+            .Belt(4, 5, Direction.East)
+            .Filter(5, 4, Direction.North, Wood)
+            .Belt(5, 6, Direction.South);
+        farm.Item(4, 5, new FakeItem(Wood, 1), Balance.End).Run(1 + (Balance.End / Balance.SplitterSpeed));
+        farm.Item(4, 5, new FakeItem(Wood, 1), Balance.End).Run(1 + (Balance.End / Balance.SplitterSpeed));
+        farm.Item(4, 5, new FakeItem(Wood, 1), Balance.End).Run(5);
+
+        SplitterNode splitter = farm.SplitterAt(5, 5);
+        FilterNode filter = farm.FilterAt(5, 4);
+        Assert.Equal(Direction.West, splitter.LastInput);
+        Assert.Equal(Direction.South, splitter.LastOutput);
+        Assert.NotNull(splitter.Slot.Item);
+        Assert.NotNull(filter.Slot.Item);
+
+        var items = new List<ILogisticsItem>();
+        WorldRuntimeState state = RuntimeStateSerializer.Export(world, it => Register(items, it));
+        WorldRuntimeState json = JsonSerializer.Deserialize<WorldRuntimeState>(JsonSerializer.Serialize(state))!;
+        LogisticsWorld fresh = EmptyCopy(world);
+        var orphans = new List<OrphanItem>();
+        RuntimeStateSerializer.Import(fresh, json, i => items[i], orphans);
+
+        Assert.Empty(orphans);
+        var restoredSplitter = Assert.IsType<SplitterNode>(fresh.Get("Farm")!.Get(new TilePos(5, 5)));
+        var restoredFilter = Assert.IsType<FilterNode>(fresh.Get("Farm")!.Get(new TilePos(5, 4)));
+        Assert.Equal(Direction.West, restoredSplitter.LastInput);
+        Assert.Equal(Direction.South, restoredSplitter.LastOutput);
+        Assert.Same(splitter.Slot.Item, restoredSplitter.Slot.Item);
+        Assert.Equal(splitter.Slot.Progress, restoredSplitter.Slot.Progress);
+        Assert.Equal(Direction.West, restoredSplitter.Slot.EntrySide);
+        Assert.Same(filter.Slot.Item, restoredFilter.Slot.Item);
+        Assert.Equal(filter.Slot.Progress, restoredFilter.Slot.Progress);
+        Assert.Equal(Direction.South, restoredFilter.Slot.EntrySide);
+    }
+
+    [Theory]
+    [InlineData(-1, -1)]
+    [InlineData(4, 99)]
+    public void Import_SplitterPointersInvalidOrUnset_BecomeNull(int input, int output)
+    {
+        static WorldRuntimeState StateWithSplitter(int input, int output)
+        {
+            var state = new WorldRuntimeState();
+            state.Grids["Farm"] = new GridRuntimeState
+            {
+                Nodes = { new NodeRuntimeState { X = 0, Y = 0, Kind = NodeKind.Splitter, InputPointer = input, OutputPointer = output } },
+            };
+            return state;
+        }
+
+        var world = new LogisticsWorld();
+        var splitter = new SplitterNode(new TilePos(0, 0));
+        world.GetOrCreate("Farm").Add(splitter);
+        RuntimeStateSerializer.Import(world, StateWithSplitter((int)Direction.East, (int)Direction.West), _ => null, new List<OrphanItem>());
+        Assert.Equal(Direction.East, splitter.LastInput);
+        Assert.Equal(Direction.West, splitter.LastOutput);
+
+        RuntimeStateSerializer.Import(world, StateWithSplitter(input, output), _ => null, new List<OrphanItem>());
+
+        Assert.Null(splitter.LastInput);
+        Assert.Null(splitter.LastOutput);
+    }
+
+    [Fact]
     public void ExportAndImport_ConserveItems()
     {
         var world = new LogisticsWorld();
@@ -366,6 +437,8 @@ public class RuntimeStateSerializerTests
                 {
                     BeltNode belt => new BeltNode(belt.Position, belt.Facing, belt.Tier),
                     InserterNode inserter => new InserterNode(inserter.Position, inserter.Facing, inserter.Tier),
+                    FilterNode filter => new FilterNode(filter.Position, filter.Facing, filter.Rule),
+                    SplitterNode splitter => new SplitterNode(splitter.Position),
                     _ => throw new InvalidOperationException($"Nó inesperado: {node.Kind}."),
                 });
             }

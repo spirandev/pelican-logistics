@@ -10,8 +10,8 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 1: Base | Concluída | `fase-1-base` | [#2](https://github.com/spirandev/pelican-logistics/pull/2) | OK em 2026-10-17 |
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
-| 4: Persistência | Aguardando teste local | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | |
-| 5: Roteamento | Não iniciada | | | |
+| 4: Persistência | Concluída | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | Compila contra o jogo; salvar/carregar não testado no jogo (ver pendências) |
+| 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
 | 6: Itens restantes | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
@@ -52,6 +52,18 @@ Formato sugerido:
 - Não testado: destino cheio com o item esperando na mão e quebrar um Inseridor com item na mão (os testes do Core cobrem os dois).
 - [x] Ajuste: remover a migração dos Extratores (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource` e a chamada no `WorldRegistry.Rebuild`). O usuário não tem mais saves com Extratores e não vai precisar dela. A proteção do `Added` (ignorar tile que já tem nó) pode ficar. **Feito na Fase 4.**
 - Observação de desempenho (não é bug): sem nada para pegar (ex.: baú só com madeira abastecendo uma fornalha), o Inseridor testa todas as pilhas do baú contra as regras da máquina a cada tick. Se o teste de desempenho da Fase 7 mostrar queda de FPS, fazer o Inseridor esperar alguns ticks antes de tentar de novo depois de uma tentativa sem sucesso.
+
+### Da fase 4
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos) e os 252 testes do Core passam. As "APIs a confirmar" foram conferidas no código descompilado: `GetOrCreateGlobalInventory`, `Inventory.Add`/`Clear`/enumeração e `Farm.GetMainFarmHouseEntry()` existem, e o jogo grava e restaura os inventários globais no save (`SaveGame`, como os baús Junimo; inventários vazios são removidos antes de salvar).
+- Não testado no jogo: salvar e carregar (itens em trânsito, mão do Inseridor, slots virtuais, não duplicar ao carregar sem salvar). O usuário não quis usar a save principal nem montar uma save nova só para isso; o teste fica para o uso normal do mod, e um erro encontrado jogando vira pendência da fase em andamento.
+
+### Da fase 5
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos), os 336 testes do Core passam e não há erros do mod no log.
+- Testado e funcionando (2026-10-18, 1366×768): Filtro Comum (configurar sem gastar o item, ícone no bloco, item recusado trava a linha), filtro acoplado ao Inseridor, Filtro Completo (lista branca por categoria, lista negra, qualidade, campo de context tags), Divisor (separador clássico, excedente com baú cheio, ordem horária, divisão de pilha, duas entradas), Inseridor como entrada e saída do Divisor, `R` no Filtro e no Divisor.
+- Corrigido durante o primeiro teste local, na própria branch:
+  - Bug na interface: em 1366×768, a interface do Filtro Completo cortava a parte de baixo (só apareciam as categorias até "Artesanais, Ovos..."). Agora ela tem duas colunas (cerca de 1224×630 pixels).
+  - Pedido de mudança: o Inseridor precisa funcionar com todos os blocos, como funciona com baús e máquinas. Ex.: baú → Inseridor → esteira → Divisor → Inseridor → fornalha não funcionava do Divisor para o Inseridor; baú → Inseridor → filtro → Divisor → Inseridor → fornalha também precisa funcionar. Agora o Inseridor é entrada e saída do Divisor (README "Divisor"; plano mestre D3 e D4 atualizados).
+- Não testado: salvar e carregar das regras dos filtros e dos itens dentro do Divisor e dos filtros (mesmo motivo da Fase 4). O placeholder da esteira em curva (`a739034`) foi compilado depois do teste e ainda não foi visto no jogo.
 
 ---
 
@@ -108,3 +120,20 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Erro ao salvar: todos os itens vão para o inventário global sem estado (`WriteSaveData` com `null`); ao carregar, caem perto da casa.
 - "Perto da casa da fazenda" = tile de `Farm.GetMainFarmHouseEntry()`.
 - Mensagens de log em pt-BR no código, como as já existentes no `WorldRegistry`; sem textos novos para o jogador no `i18n`.
+
+### Fase 5
+- Branch: o plano pede `fase-5-roteamento`; esta sessão rodou localmente (não na nuvem), então foi usado o nome do plano.
+- Pendências da Fase 4: nenhuma registrada (ver acima).
+- Compilação do adaptador: esta sessão tinha o jogo instalado, então o mod foi compilado contra o jogo (0 avisos, 0 erros), sem instalar na pasta `Mods` (`-p:EnableModDeploy=false`). As APIs novas foram conferidas no código descompilado; falta só o teste no jogo.
+- Regras do filtro no `modData`: JSON ausente ou corrompido, ou modo inválido, dá a regra vazia (que não deixa passar nada); valores inválidos dentro das listas (nulos, vazios, qualidade fora de 0/1/2/4) são descartados. O modo é gravado pelo nome (`"Whitelist"`/`"Blacklist"`).
+- Context tags: a interface separa por vírgula, tira os espaços, passa para minúsculas (como as tags do jogo) e não repete.
+- Categorias do Filtro Completo: uma opção por categoria do jogo, com as constantes de `StardewValley.Object`. O jogo mostra "Mineral" para as categorias -2 e -12: o **quartzo** e as gemas são da -2 (**Gemas**), os minerais dos geodos da -12 (**Minerais**). Por isso o item do checklist "lista branca com Minerais deixa passar quartzo" virou "com **Gemas**".
+- Divisor: puxa a próxima entrada no mesmo tick em que distribuiu (como uma esteira que recebe logo depois de entregar), então cada pilha leva 15 ticks para atravessá-lo.
+- Divisor: a "saída livre" é a que aceita o item agora (`CanAccept`): um filtro que ainda está passando o item anterior conta como ocupado e o item vai como excedente para as saídas sem filtro (regra 4 do README).
+- Inseridor e Divisor (depois do primeiro teste local): um Inseridor apontando para o Divisor é entrada, e o Divisor puxa o item da mão dele (o braço volta vazio, com a volta normal de 15 ticks); o Inseridor só pega quando o Divisor está vazio, como faz com uma esteira ocupada. Um Inseridor com a traseira virada para o Divisor é saída sem filtro: é "livre" se pegaria o item agora (braço parado e vazio, destino aceita) e recebe só a quantidade do tier; o resto fica no Divisor, bloqueado, e é distribuído de novo no próximo tick. Um Divisor na lateral de um Inseridor não se conecta (as laterais do Inseridor são só para esteiras que terminam nele), e dois Inseridores encostados continuam sem conexão (README "Inseridores").
+- Divisor com uma única saída para um Inseridor que abastece uma máquina: se a máquina não aceita o item da vez (ex.: minério com o Principal já completo, esperando carvão), o Divisor trava, como uma esteira que termina num Inseridor. Na esteira única, o carvão precisa vir entre os minérios.
+- Caminho do item no Divisor: calculado no Core (`PathMath.GetHubPosition`), com teste, em vez de no adaptador.
+- Interfaces: o botão OK foi para o topo, ao lado do título, e a caixa fica encostada no canto de cima da tela quando não cabe. O `ConfigMenu` aceita colunas (`ConfigColumn`); o Filtro Completo usa duas: modo, qualidade e context tags à esquerda (360 px), itens com o inventário e categorias à direita.
+- `ToggleRow` não foi criado: nenhuma interface desta fase tem um liga/desliga isolado, e o `ToggleGroupRow` cobre qualidades e categorias. `ToggleGroupRow` e `CycleRow` são genéricos no tipo do valor.
+- `ItemListRow`: os 12 slots fantasma são um pouco menores (52 px) para o rótulo caber na mesma linha; item repetido ou lista cheia toca o som de "cancelar".
+- Um filtro recolhido e colocado de novo volta vazio, como a configuração do Inseridor (o jogo copia o `modData` do item segurado).

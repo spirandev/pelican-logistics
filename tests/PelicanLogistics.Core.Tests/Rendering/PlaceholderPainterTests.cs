@@ -95,4 +95,77 @@ public class PlaceholderPainterTests
         Assert.False(arrow.Get(8, 2).IsTransparent);
         Assert.True(arrow.Get(0, 0).IsTransparent);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PaintFilter_IsOpaque_GreenDiamondWithArrowPointingNorth(bool complete)
+    {
+        PixelBuffer filter = PlaceholderPainter.PaintFilter(complete);
+        Rgba green = complete ? PlaceholderColors.FilterComplete : PlaceholderColors.FilterCommon;
+
+        Assert.Equal(16 * 16, filter.CountOpaque());
+        Assert.Equal(PlaceholderColors.BeltBasic, filter.Get(2, 2)); // canto fora do losango
+        Assert.Equal(green, filter.Get(8, 14));                       // ponta de baixo do losango
+        Assert.Equal(green, filter.Get(2, 8));                        // ponta da esquerda
+        Assert.Equal(PlaceholderColors.Outline, filter.Get(15, 8));   // o losango não invade o contorno
+        Assert.Equal(PlaceholderColors.Mark, filter.Get(8, 3));       // ponta da seta, em cima
+        Assert.Equal(PlaceholderColors.Mark, filter.Get(6, 5));
+        Assert.NotEqual(PlaceholderColors.Mark, filter.Get(7, 3));
+    }
+
+    [Fact]
+    public void PaintFilter_CompleteHasADoubleDiamond_CommonDoesNot()
+    {
+        // O losango de dentro é um contorno escuro a 4 pixels do centro.
+        Assert.Equal(PlaceholderColors.Outline, PlaceholderPainter.PaintFilter(true).Get(8, 12));
+        Assert.Equal(PlaceholderColors.FilterComplete, PlaceholderPainter.PaintFilter(true).Get(8, 10));
+        Assert.Equal(PlaceholderColors.FilterComplete, PlaceholderPainter.PaintFilter(true).Get(8, 13));
+        Assert.Equal(PlaceholderColors.FilterCommon, PlaceholderPainter.PaintFilter(false).Get(8, 12));
+    }
+
+    [Fact]
+    public void PaintSplitter_IsOpaque_PurpleCircleWithFourExits()
+    {
+        PixelBuffer splitter = PlaceholderPainter.PaintSplitter();
+
+        Assert.Equal(16 * 16, splitter.CountOpaque());
+        Assert.Equal(PlaceholderColors.Splitter, splitter.Get(8, 4));
+        Assert.Equal(PlaceholderColors.BeltBasic, splitter.Get(2, 2));
+
+        // Uma saída no meio de cada borda, logo dentro do contorno.
+        Assert.Equal(PlaceholderColors.Splitter, splitter.Get(7, 1));
+        Assert.Equal(PlaceholderColors.Splitter, splitter.Get(14, 7));
+        Assert.Equal(PlaceholderColors.Splitter, splitter.Get(8, 14));
+        Assert.Equal(PlaceholderColors.Splitter, splitter.Get(1, 8));
+    }
+
+    [Theory]
+    [InlineData(BeltTier.Basic, 9)]
+    [InlineData(BeltTier.Fast, 18)]
+    [InlineData(BeltTier.Express, 27)]
+    public void PaintBeltCurve_IsOpaque_WithOneTwoThreeArrows(BeltTier tier, int markPixels)
+    {
+        foreach (bool fromLeft in new[] { true, false })
+        {
+            PixelBuffer curve = PlaceholderPainter.PaintBeltCurve(tier, fromLeft);
+
+            Assert.Equal(16 * 16, curve.CountOpaque());
+            Assert.Equal(markPixels, curve.Pixels.Count(p => p == PlaceholderColors.Mark));
+        }
+    }
+
+    [Theory]
+    [InlineData(true, 1, 14)]
+    [InlineData(false, 14, 1)]
+    public void PaintBeltCurve_PathGoesFromTheInputSideToTheTop_LikeTheStraightArrowColumn(bool fromLeft, int inputX, int otherX)
+    {
+        PixelBuffer curve = PlaceholderPainter.PaintBeltCurve(BeltTier.Basic, fromLeft);
+
+        Assert.Equal(PlaceholderColors.Outline, curve.Get(inputX, 8));                 // perna horizontal na borda da entrada
+        Assert.Equal(PlaceholderColors.BeltBasic, curve.Get(otherX, 8));               // o outro lado fica livre
+        Assert.Equal(PlaceholderColors.Outline, curve.Get(8, 1));                      // perna vertical até a borda de cima
+        Assert.Equal(PlaceholderColors.Mark, curve.Get(8, 3));                         // ponta da seta para cima, na coluna da reta
+        Assert.Equal(PlaceholderColors.BeltBasic, curve.Get(8, 12));                   // nada embaixo: a traseira não recebe
+    }
 }
