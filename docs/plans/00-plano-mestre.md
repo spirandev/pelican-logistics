@@ -92,6 +92,7 @@ Namespaces e responsabilidades (criados aos poucos pelas fases):
 | `Nodes` | `LogisticsNode` (base), `BeltNode`, `InserterNode`, `FilterNode`, `SplitterNode`, `UndergroundBeltNode` |
 | `Simulation` | `LogisticsGrid` (um por local do jogo), `LogisticsWorld` (todos os locais), `Topology` (formas, conexões e ordem de processamento), `Balance` (constantes) |
 | `Filters` | `IFilterRule`, `CommonFilterRule`, `CompleteFilterRule` |
+| `Regulators` | `RegulatorMode`, `RegulatorRule`, `RegulatorRuleSerializer` (Fase 6) |
 | `Machines` | `VirtualSlots`, requisitos de máquina |
 | `Persistence` | DTOs de estado em tempo de execução (snapshot) |
 | `Rendering` | Matemática de posição do item no tile (`PathMath`) e pintura dos placeholders em buffers de pixels (`PlaceholderPainter`) |

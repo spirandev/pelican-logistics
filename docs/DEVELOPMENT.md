@@ -150,8 +150,8 @@ Digite no console do SMAPI (com um save carregado).
 
 | Comando | O que faz | Desde |
 |---|---|---|
-| `pl_give` | Coloca no inventário 10 de cada item do mod (Esteira, Inseridor, Filtro Comum, Filtro Completo, Divisor). Útil quando a loja do Clint está fechada. | Fase 1 |
-| `pl_dump` | Lista os blocos do mod no local atual: posição, tipo, direção, lado de entrada (esteiras) e, para o Inseridor, `source=` (Retirar de), `slot=` (Colocar em), `cooldown=` (ticks da volta do braço), `lastInput=` (última entrada usada) e `inputs=` (entradas). Para o Filtro, `rule=` (regra). Para o Divisor, `inputs=`, `outputs=`, `lastInput=` e `lastOutput=` (o `facing=` do Divisor não tem significado). Para cada espaço (o da esteira, do filtro, do Divisor, ou a mão do Inseridor em `hand=`): item, quantidade, progresso (`0..600`), lado de entrada e se está `blocked`. | Fase 1 (Inseridor: Fase 3; Filtro e Divisor: Fase 5) |
+| `pl_give` | Coloca no inventário 10 de cada item do mod (as três esteiras, os três Inseridores, os dois filtros, o Divisor, a Esteira Subterrânea, a Ponte e o Regulador). Útil quando a loja do Clint está fechada. | Fase 1 |
+| `pl_dump` | Lista os blocos do mod no local atual: posição, tipo, direção, lado de entrada (esteiras) e, para o Inseridor, `source=` (Retirar de), `slot=` (Colocar em), `cooldown=` (ticks da volta do braço), `lastInput=` (última entrada usada) e `inputs=` (entradas). No Inseridor Configurável, `amount=` (quantidade por vez); com Regulador, `regulator=`. Para o Filtro, `rule=` (regra). Para o Divisor, `inputs=`, `outputs=`, `lastInput=` e `lastOutput=` (o `facing=` do Divisor não tem significado). Para a Esteira Subterrânea, `role=` (Entrance/Exit), `partner=` (o par) e, na entrada, `tunnel=` (tiles do vão). Com acessório, `accessory=`. Para cada espaço (o da esteira, do filtro, do Divisor, da Subterrânea — na entrada, o do tile e os 5 do túnel —, ou a mão do Inseridor em `hand=`): item, quantidade, progresso (`0..600`), lado de entrada e se está `blocked`. | Fase 1 (Inseridor: Fase 3; Filtro e Divisor: Fase 5; Subterrânea e acessórios: Fase 6) |
 | `pl_inspect` | Mostra o bloco sob o cursor (como uma linha do `pl_dump`) e, se o tile for uma máquina, os slots virtuais (`Principal: 3/5 Minério de cobre`, `Adicional: 1/1 Carvão`) e o estado da máquina. | Fase 2 |
 
 Exemplo de saída do `pl_inspect` sobre uma fornalha:
@@ -184,20 +184,33 @@ Filtro e Divisor no `pl_dump`:
 
 No Divisor, `blocked` indica que nenhuma saída livre aceita o item (regra 5 do README: erro de montagem).
 
+Itens da Fase 6 no `pl_dump`:
+
+```
+  (60, 15) Inserter facing=East tier=Configurable source=Product slot=Auto amount=5 cooldown=0 lastInput=West inputs=West regulator=General(50) accessory=Regulator hand=[vazio]
+  (61, 15) Belt facing=East tier=Fast input=West accessory=Bridge [Madeira x5 300/600 entry=West]
+  (62, 15) UndergroundBelt facing=East role=Entrance partner=(65, 15) tunnel=2 [vazio] [Madeira x5 120/600 entry=West] [vazio] [vazio] [vazio] [vazio]
+  (65, 15) UndergroundBelt facing=East role=Exit partner=(62, 15) [vazio]
+```
+
 ---
 
 ## 9. Usando os blocos (alpha)
 
 - **Rotação:** segurando um bloco do mod, `R` (configurável em `RotateKey`) gira a direção de colocação; uma seta semitransparente mostra a direção no tile do cursor. Com a mão livre e o cursor sobre um bloco colocado, `R` gira o bloco.
 - **Inseridor:** pega **atrás** e entrega **na frente** (o triângulo escuro na borda do quadrado azul aponta para o destino). Exemplos: baú → Inseridor → esteira; esteira → Inseridor → fornalha; baú → Inseridor → fornalha (direto); fornalha → Inseridor → baú.
-  - **Frente (destino):** baú, máquina, Divisor, ou esteira/filtro que começa nele (com a traseira virada para ele, ou fazendo curva saindo dele). Outro Inseridor na frente não recebe.
-  - **Trás (origem):** baú, máquina, Divisor ou esteira/filtro que termina nele. **Laterais:** só esteiras que **terminam** nele; baús e máquinas nas laterais e esteiras passando ao lado são ignorados.
+  - **Frente (destino):** baú, máquina, Divisor, entrada de Esteira Subterrânea, ou esteira/filtro que começa nele (com a traseira virada para ele, ou fazendo curva saindo dele). Outro Inseridor na frente não recebe.
+  - **Trás (origem):** baú, máquina, Divisor, saída de Esteira Subterrânea ou esteira/filtro que termina nele. **Laterais:** só esteiras (ou saídas de Subterrânea) que **terminam** nele; baús e máquinas nas laterais e esteiras passando ao lado são ignorados.
   - **Várias entradas:** alterna entre elas em ordem horária (N → L → S → O), continuando depois da última usada.
   - **Só pega o que o destino aceita**, e só a quantidade que cabe: de um baú com madeira e minério, abastecendo uma fornalha, só sai minério, e no máximo o que falta no slot.
   - **Braço:** o item viaja na mão; o braço gira da origem até o destino (0,25 s), entrega e volta vazio (0,25 s). Se o destino encher no caminho, o item espera na mão. Parado, o braço aponta para a última entrada usada.
 - **Interface:** clique com o botão de ação (direito) num Inseridor. **Retirar de** (Produto, Principal ou Adicional) vale quando atrás há uma máquina; **Colocar em** (Automático, Principal ou Adicional) vale quando na frente há uma máquina. A escolha vale na hora. Um bloco recolhido e colocado de novo volta à configuração padrão (vale também para os filtros). O botão OK fica no canto de cima da interface; `Esc` também fecha.
 - **Máquinas:** o Inseridor guarda os itens nos **slots virtuais** da máquina (Principal e Adicional) e a aciona quando tudo está completo. Quebrar a máquina solta no chão os itens guardados. Covo e Barril de carvalho não são suportados na alpha.
-- **Esteira:** só recebe por trás. Uma esteira sem nada atrás e com outra (ou um Inseridor, ou um Divisor) entregando pela lateral vira curva, desenhada com um traço em L da lateral de onde recebe até a frente.
+- **Inseridor de Pilha e Inseridor Configurável:** iguais ao Inseridor (1 operação a cada 0,5 s), mas o de Pilha move a pilha inteira (de um slot do baú, ou a que chegou pela esteira) e o Configurável move a **Quantidade por vez** escolhida na interface (1 a 999; botões `-10`, `-1`, `+1`, `+10` ou digitando), juntando de vários slots do baú. Os dois param no que cabe no destino, e numa máquina colocam só o que falta no slot. Têm 2 e 3 pontos brancos no canto.
+- **Esteira:** só recebe por trás. Uma esteira sem nada atrás e com outra (ou um Inseridor, um Divisor ou uma saída de Esteira Subterrânea) entregando pela lateral vira curva, desenhada com um traço em L da lateral de onde recebe até a frente. A **Esteira Rápida** (cinza médio, 2 setas) anda 2 tiles/s e a **Expressa** (cinza escuro, 3 setas) 4 tiles/s; a básica, 1 tile/s.
+- **Esteira Subterrânea:** a primeira colocada vira **entrada** (círculo branco); outra colocada até 5 tiles à frente, **na mesma direção**, vira **saída** (círculo preto) e as duas formam um par. Segurando uma Subterrânea, a prévia já mostra o círculo que ela terá e uma linha tracejada fraca liga cada par. A entrada recebe só por trás (sem curva); os itens passam por baixo do vão (cercas, caminhos, outros blocos), sem aparecer, e saem pela saída, que entrega à frente como uma esteira (rápida, 4 tiles/s). Com 6 tiles de vão não pareia. Entrada sem par: o item para no fim dela. A entrada é destino válido do Inseridor e saída válida do Divisor; a saída é origem do Inseridor (por trás ou pela lateral) e entrada do Divisor. Quebrar a entrada solta o item dela e os do túnel. O papel (entrada ou saída) é decidido ao colocar e não muda ao girar.
+- **Ponte:** segure a Ponte e clique (botão de ação) numa esteira de qualquer velocidade: a faixa marrom aparece por cima e o jogador **passa por cima** daquele tile; os itens continuam andando por baixo. Num Filtro, Divisor, Inseridor ou Subterrânea aparece uma mensagem e nada é gasto. Com a mão livre, clicar na esteira com ponte devolve a ponte ao inventário. Cada tile aceita um acessório só.
+- **Regulador:** segure o Regulador e clique num Inseridor (qualquer versão): aparece um quadrado amarelo no canto. Com destino **baú**, o Inseridor para de colocar quando o baú atinge o limite; o resto fica esperando (na esteira, no filtro ou no baú de origem). Com destino máquina, não faz nada. Configure na interface do Inseridor, na seção **Regulador**: **Modo Geral** (limite do total de itens no baú, 0 a 99.999) ou **Por item** (uma lista de até 8 itens, cada um com o seu limite; "Adicionar item" abre o inventário para escolher; itens fora da lista entram sem limite). "Remover regulador" devolve o Regulador ao inventário e apaga a regra.
 - **Filtro Comum e Filtro Completo:** blocos de esteira **sempre retos** (entram por trás, saem pela frente) e **rápidos** (4 tiles/s). Só entra o que o filtro aceita; o resto fica parado no bloco anterior, sem saída lateral. Seguram uma pilha por vez e nunca juntam itens. Giram com `R`.
   - **Interface:** botão de ação sobre o filtro. **Filtro Comum:** clique num item do seu inventário para escolhê-lo (o item **não** sai do inventário); "Limpar" esvazia. Compara só o item: qualquer qualidade passa. O ícone do item aparece pequeno no centro do bloco. Filtro vazio não deixa passar nada.
   - **Filtro Completo:** **Modo** (lista branca: passa o que corresponde; lista negra: passa o que não corresponde), **Itens** (até 12; clique no inventário para adicionar e na lista para remover), **Qualidade**, **Categorias** e **Context tags** (separadas por vírgula, ex.: `color_red, season_spring`). Dentro de um grupo vale **ou**; entre grupos vale **e** (ex.: item Chirívia + qualidade Ouro = só chirívias ouro). Lista branca vazia não deixa passar nada; lista negra vazia deixa passar tudo.
@@ -210,16 +223,16 @@ No Divisor, `blocked` indica que nenhuma saída livre aceita o item (regra 5 do 
   4. Saída ocupada é pulada; um filtro ocupado (ex.: baú de madeira cheio) manda o excedente para as saídas sem filtro.
   5. Nenhuma saída livre aceita o item: o Divisor trava até alguma liberar.
   6. Várias entradas: alterna entre elas. Entradas e saídas seguem a ordem horária (N → L → S → O), começando pelo norte e continuando depois da última usada.
-- **Remover:** quebre o bloco com a picareta; ele e o item que carregava (na esteira ou na mão do Inseridor) caem no chão.
-- **Salvar e carregar:** os itens nas esteiras, nos filtros, nos Divisores, na mão dos Inseridores e nos slots virtuais das máquinas continuam onde estavam (ver a seção 10).
+- **Remover:** quebre o bloco com a picareta; ele, o item que carregava (na esteira, no túnel ou na mão do Inseridor) e o acessório (Ponte ou Regulador) caem no chão. O bloco recolhido volta à configuração padrão.
+- **Salvar e carregar:** os itens nas esteiras, nos filtros, nos Divisores, nas Subterrâneas (inclusive no túnel), na mão dos Inseridores e nos slots virtuais das máquinas continuam onde estavam (ver a seção 10).
 
 ---
 
 ## 10. Como o mod salva
 
-O jogo salva sozinho os blocos colocados e o `modData` deles: direção, "Retirar de" e "Colocar em" do Inseridor e a regra dos filtros (em JSON, na chave `spirandev.PelicanLogistics/FilterRule`). O resto (o **estado em tempo de execução**) é salvo pelo mod desde a Fase 4, em duas partes:
+O jogo salva sozinho os blocos colocados e o `modData` deles: direção, "Retirar de" e "Colocar em" do Inseridor, a quantidade do Inseridor Configurável (`ConfiguredAmount`), o papel da Esteira Subterrânea (`UndergroundRole`), o acessório (`Accessory`), a regra do Regulador e a dos filtros (em JSON, nas chaves `spirandev.PelicanLogistics/RegulatorRule` e `spirandev.PelicanLogistics/FilterRule`). O resto (o **estado em tempo de execução**) é salvo pelo mod desde a Fase 4, em duas partes:
 
-- **Estado em JSON**, nos dados do mod dentro do save (`Helper.Data.WriteSaveData`, chave `runtime-state`): para cada local, cada bloco com a posição, o tipo, o progresso, o lado de entrada e se está bloqueado de cada espaço, a volta do braço e a última entrada do Inseridor, a última entrada e a última saída do Divisor; e os slots virtuais de cada máquina. Os itens **não** vão no JSON: cada espaço guarda só o **índice** do item na lista abaixo.
+- **Estado em JSON**, nos dados do mod dentro do save (`Helper.Data.WriteSaveData`, chave `runtime-state`): para cada local, cada bloco com a posição, o tipo, o progresso, o lado de entrada e se está bloqueado de cada espaço (a entrada da Subterrânea tem sempre 6: o do tile e os 5 do túnel), a volta do braço e a última entrada do Inseridor, a última entrada e a última saída do Divisor; e os slots virtuais de cada máquina. Os itens **não** vão no JSON: cada espaço guarda só o **índice** do item na lista abaixo.
 - **Itens num inventário global do jogo** (`spirandev.PelicanLogistics/Transit`), que o próprio jogo grava no save com segurança (anéis, ferramentas, itens com sabor etc.).
 
 O fluxo:
