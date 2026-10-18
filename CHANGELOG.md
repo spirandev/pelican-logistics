@@ -41,6 +41,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Mod: Filtro Comum, Filtro Completo e Divisor registrados, à venda no Clint por 0g e no `pl_give`; regra dos filtros no `modData`.
 - Mod: interfaces do Filtro Comum (escolha do item pelo inventário, sem gastá-lo) e do Filtro Completo (modo, itens, qualidades, categorias e context tags), com as linhas novas `ItemPickerRow`, `ItemListRow`, `ToggleGroupRow` e `TextRow`.
 - Mod: desenho do Filtro (com o ícone do item do Filtro Comum) e do Divisor (sem rotação); `pl_dump` mostra a regra do filtro e as portas e ponteiros do Divisor.
+- Core e Mod: placeholder próprio da esteira em curva (traço em L da lateral de entrada até a frente, com as setas do tier).
 
 ### Alterado
 - Interfaces: o botão OK fica no topo, ao lado do título, e a caixa se ajusta à linha mais larga (o inventário dos filtros).

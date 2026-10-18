@@ -93,10 +93,13 @@ internal sealed class NodeRenderer
         // Profundidade: abaixo do jogador quando ele está ao sul do bloco. Valor a ajustar no teste local.
         float baseDepth = Math.Max(0f, y * Game1.tileSize / 10000f) + 0.0001f;
 
-        // O Divisor não tem direção: o sprite nunca gira.
+        // O Divisor não tem direção: o sprite nunca gira. A esteira em curva tem um sprite próprio.
         float rotation = ItemIds.IsDirectional(obj.ItemId) ? RotationOf(facing) : 0f;
+        Texture2D sprite = node is BeltNode { IsCurve: true } belt
+            ? PlaceholderTextures.GetBeltCurveSprite(belt.Tier, belt.InputSide == belt.Facing.CounterClockwise())
+            : PlaceholderTextures.GetWorldSprite(obj.ItemId);
         b.Draw(
-            PlaceholderTextures.GetWorldSprite(obj.ItemId),
+            sprite,
             topLeft + TileCenter,
             null,
             Color.White * alpha,

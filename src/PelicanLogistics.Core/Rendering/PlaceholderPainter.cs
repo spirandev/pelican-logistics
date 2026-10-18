@@ -32,6 +32,39 @@ public static class PlaceholderPainter
     }
 
     /// <summary>
+    /// Esteira em curva, apontando para o NORTE e recebendo pela lateral: oeste se <paramref name="fromLeft"/>, senão
+    /// leste. Mesmo quadrado cinza da reta, com um traço escuro em L da lateral ao centro e do centro à borda de cima,
+    /// e 1, 2 ou 3 setas brancas ao longo do caminho (a última sempre para cima).
+    /// </summary>
+    public static PixelBuffer PaintBeltCurve(BeltTier tier, bool fromLeft)
+    {
+        (Rgba color, (int X, int Y, Direction Dir)[] arrows) = tier switch
+        {
+            BeltTier.Basic => (PlaceholderColors.BeltBasic, new[] { (8, 4, Direction.North) }),
+            BeltTier.Fast => (PlaceholderColors.BeltFast, new[] { (4, 8, Direction.East), (8, 4, Direction.North) }),
+            BeltTier.Express => (PlaceholderColors.BeltExpress, new[] { (3, 8, Direction.East), (6, 8, Direction.East), (8, 4, Direction.North) }),
+            _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Tier de esteira inválido."),
+        };
+
+        // A perna vertical fica na coluna 8, como a seta da reta; a horizontal vai até a borda da entrada.
+        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+        buffer.FillRect(0, 0, SpriteSize, SpriteSize, color);
+        buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
+        buffer.FillRect(fromLeft ? 1 : 8, 8, fromLeft ? 8 : SpriteSize - 9, 1, PlaceholderColors.Outline);
+        buffer.FillRect(8, 1, 1, 8, PlaceholderColors.Outline);
+        foreach ((int x, int y, Direction dir) in arrows)
+        {
+            // Pela direita, as setas da perna horizontal ficam espelhadas em torno da coluna 8 e apontam para o oeste.
+            if (fromLeft || dir == Direction.North)
+                buffer.DrawArrow(x, y, dir, PlaceholderColors.Mark);
+            else
+                buffer.DrawArrow(SpriteSize - x, y, Direction.West, PlaceholderColors.Mark);
+        }
+
+        return buffer;
+    }
+
+    /// <summary>
     /// Quadrado azul com um triângulo pequeno na borda de cima (a frente, o destino) e 2 ou 3 pontos no canto para
     /// Pilha/Configurável. O braço não faz parte do sprite: o adaptador desenha por cima.
     /// </summary>

@@ -139,4 +139,33 @@ public class PlaceholderPainterTests
         Assert.Equal(PlaceholderColors.Splitter, splitter.Get(8, 14));
         Assert.Equal(PlaceholderColors.Splitter, splitter.Get(1, 8));
     }
+
+    [Theory]
+    [InlineData(BeltTier.Basic, 9)]
+    [InlineData(BeltTier.Fast, 18)]
+    [InlineData(BeltTier.Express, 27)]
+    public void PaintBeltCurve_IsOpaque_WithOneTwoThreeArrows(BeltTier tier, int markPixels)
+    {
+        foreach (bool fromLeft in new[] { true, false })
+        {
+            PixelBuffer curve = PlaceholderPainter.PaintBeltCurve(tier, fromLeft);
+
+            Assert.Equal(16 * 16, curve.CountOpaque());
+            Assert.Equal(markPixels, curve.Pixels.Count(p => p == PlaceholderColors.Mark));
+        }
+    }
+
+    [Theory]
+    [InlineData(true, 1, 14)]
+    [InlineData(false, 14, 1)]
+    public void PaintBeltCurve_PathGoesFromTheInputSideToTheTop_LikeTheStraightArrowColumn(bool fromLeft, int inputX, int otherX)
+    {
+        PixelBuffer curve = PlaceholderPainter.PaintBeltCurve(BeltTier.Basic, fromLeft);
+
+        Assert.Equal(PlaceholderColors.Outline, curve.Get(inputX, 8));                 // perna horizontal na borda da entrada
+        Assert.Equal(PlaceholderColors.BeltBasic, curve.Get(otherX, 8));               // o outro lado fica livre
+        Assert.Equal(PlaceholderColors.Outline, curve.Get(8, 1));                      // perna vertical até a borda de cima
+        Assert.Equal(PlaceholderColors.Mark, curve.Get(8, 3));                         // ponta da seta para cima, na coluna da reta
+        Assert.Equal(PlaceholderColors.BeltBasic, curve.Get(8, 12));                   // nada embaixo: a traseira não recebe
+    }
 }

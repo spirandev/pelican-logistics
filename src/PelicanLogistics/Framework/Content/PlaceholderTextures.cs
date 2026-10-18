@@ -46,6 +46,7 @@ internal static class PlaceholderTextures
     };
 
     private static readonly Dictionary<string, Texture2D> WorldSprites = new();
+    private static readonly Dictionary<(BeltTier Tier, bool FromLeft), Texture2D> BeltCurveSprites = new();
     private static Texture2D? ghostArrow;
     private static Texture2D? pixel;
 
@@ -89,6 +90,21 @@ internal static class PlaceholderTextures
             Func<PixelBuffer> paint = Blocks.First(b => b.ItemId == itemId).Paint;
             texture = ToTexture(paint());
             WorldSprites[itemId] = texture;
+        }
+
+        return texture;
+    }
+
+    /// <summary>
+    /// Sprite da esteira em curva (16×16, apontando para o norte, recebendo pelo oeste se 'fromLeft', senão pelo leste).
+    /// Criado no primeiro uso e guardado em cache.
+    /// </summary>
+    public static Texture2D GetBeltCurveSprite(BeltTier tier, bool fromLeft)
+    {
+        if (!BeltCurveSprites.TryGetValue((tier, fromLeft), out Texture2D? texture))
+        {
+            texture = ToTexture(PlaceholderPainter.PaintBeltCurve(tier, fromLeft));
+            BeltCurveSprites[(tier, fromLeft)] = texture;
         }
 
         return texture;
