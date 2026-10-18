@@ -78,8 +78,8 @@ esteira    → [Inseridor] → [Fornalha]     pega da esteira e abastece a máqu
 
 | Aspecto | Comportamento |
 |---|---|
-| Frente (destino) | Fixa, definida ao girar com `R`. Pode ser um baú, uma máquina ou uma esteira que **começa** no Inseridor (com a traseira virada para ele). Uma esteira passando de lado na frente não recebe nada. |
-| Trás (origem) | Um baú, uma máquina ou uma esteira que termina no Inseridor. **Baús e máquinas só contam atrás.** |
+| Frente (destino) | Fixa, definida ao girar com `R`. Pode ser um baú, uma máquina, uma esteira (ou filtro) que **começa** no Inseridor (com a traseira virada para ele) ou um [Divisor](#divisor). Uma esteira passando de lado na frente não recebe nada. |
+| Trás (origem) | Um baú, uma máquina, uma esteira (ou filtro) que termina no Inseridor ou um [Divisor](#divisor). **Baús, máquinas e Divisores só contam atrás.** |
 | Laterais | Só **esteiras que terminam no Inseridor** (apontando para ele). Baús e máquinas nas laterais são ignorados. Uma esteira que passa ao lado, sem apontar para ele, também é ignorada: para dividir um fluxo, usa-se o [Divisor](#divisor). |
 | Várias entradas | Alterna entre elas em [ordem horária](#ordem-horária). |
 | O que ele pega | **Só o que o destino aceita agora**, e só a quantidade que cabe. Por exemplo, de um baú com madeira e minério, um Inseridor que abastece uma fornalha só pega minério, e no máximo o que falta no slot. Por isso ele **nunca trava** com um item errado. |
@@ -96,7 +96,7 @@ O Inseridor tem **uma interface** com as duas configurações: "Retirar de" (val
 |---|---|---|
 | **Filtro Comum** | 1 | **Bloco de esteira** que só deixa passar **um único item**. |
 | **Filtro Completo** | 2 | **Bloco de esteira** totalmente configurável: lista de itens, categoria, qualidade, context tags, lista branca ou lista negra. |
-| **Divisor** (Splitter) | 2 | Bloco com **4 portas** (norte, sul, leste, oeste). Toda esteira apontando para ele é uma entrada, e toda esteira saindo dele é uma saída. É o **único** ponto onde fluxos se dividem ou se juntam. |
+| **Divisor** (Splitter) | 2 | Bloco com **4 portas** (norte, sul, leste, oeste). Toda esteira (ou Inseridor) apontando para ele é uma entrada, e toda esteira (ou Inseridor) saindo dele é uma saída. É o **único** ponto onde fluxos se dividem ou se juntam. |
 | **Regulador** (Limiter) | 3 | **Acessório colocado sobre um Inseridor.** O inseridor para de inserir quando o destino atinge o limite configurado. |
 
 **Acessórios:** a Ponte vai sobre uma esteira e o Regulador vai sobre um Inseridor. Cada tile aceita **no máximo um acessório**.
@@ -131,7 +131,7 @@ esteira → [Filtro: Minério] → [Inseridor] → [Fornalha]     só insere Min
 
 ### Divisor
 
-Também é um bloco que move os itens sozinho. Cada uma das 4 portas vira entrada ou saída conforme a esteira (ou filtro) encostada nela.
+Também é um bloco que move os itens sozinho. Cada uma das 4 portas vira entrada ou saída conforme a esteira, o filtro ou o Inseridor encostado nela: um Inseridor apontando para o Divisor é uma entrada, e um Inseridor com a traseira virada para ele é uma saída (ex.: `esteira → [Divisor] → [Inseridor] → [Fornalha]`). Um Inseridor de saída só recebe o que pegaria naquele momento (a quantidade dele e o que o destino dele aceita); o resto continua no Divisor.
 
 ```
                   [Filtro: Madeira] → baú de madeira

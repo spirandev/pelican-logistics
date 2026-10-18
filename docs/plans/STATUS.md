@@ -53,6 +53,10 @@ Formato sugerido:
 - [x] Ajuste: remover a migração dos Extratores (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource` e a chamada no `WorldRegistry.Rebuild`). O usuário não tem mais saves com Extratores e não vai precisar dela. A proteção do `Added` (ignorar tile que já tem nó) pode ficar. **Feito na Fase 4.**
 - Observação de desempenho (não é bug): sem nada para pegar (ex.: baú só com madeira abastecendo uma fornalha), o Inseridor testa todas as pilhas do baú contra as regras da máquina a cada tick. Se o teste de desempenho da Fase 7 mostrar queda de FPS, fazer o Inseridor esperar alguns ticks antes de tentar de novo depois de uma tentativa sem sucesso.
 
+### Da fase 5 (primeiro teste local, corrigido na própria branch)
+- [x] Bug na interface: em 1366×768, a interface do Filtro Completo cortava a parte de baixo (só apareciam as categorias até "Artesanais, Ovos..."). Agora ela tem duas colunas (cerca de 1224×630 pixels).
+- [x] Pedido de mudança: o Inseridor precisa funcionar com todos os blocos, como funciona com baús e máquinas. Ex.: baú → Inseridor → esteira → Divisor → Inseridor → fornalha não funcionava do Divisor para o Inseridor; baú → Inseridor → filtro → Divisor → Inseridor → fornalha também precisa funcionar. Agora o Inseridor é entrada e saída do Divisor (README "Divisor"; plano mestre D3 e D4 atualizados).
+
 ### Da fase 4
 - Nenhuma pendência registrada. O PR #5 foi mesclado sem o resultado do teste local nesta página; a linha da Fase 4 continua "Aguardando teste local" até o usuário registrar o teste.
 
@@ -121,9 +125,10 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Categorias do Filtro Completo: uma opção por categoria do jogo, com as constantes de `StardewValley.Object`. O jogo mostra "Mineral" para as categorias -2 e -12: o **quartzo** e as gemas são da -2 (**Gemas**), os minerais dos geodos da -12 (**Minerais**). Por isso o item do checklist "lista branca com Minerais deixa passar quartzo" virou "com **Gemas**".
 - Divisor: puxa a próxima entrada no mesmo tick em que distribuiu (como uma esteira que recebe logo depois de entregar), então cada pilha leva 15 ticks para atravessá-lo.
 - Divisor: a "saída livre" é a que aceita o item agora (`CanAccept`): um filtro que ainda está passando o item anterior conta como ocupado e o item vai como excedente para as saídas sem filtro (regra 4 do README).
-- Inseridor: um Divisor encostado na lateral não conta como entrada (D4: Divisor e Inseridor não se conectam). Antes desta fase não fazia diferença.
+- Inseridor e Divisor (depois do primeiro teste local): um Inseridor apontando para o Divisor é entrada, e o Divisor puxa o item da mão dele (o braço volta vazio, com a volta normal de 15 ticks); o Inseridor só pega quando o Divisor está vazio, como faz com uma esteira ocupada. Um Inseridor com a traseira virada para o Divisor é saída sem filtro: é "livre" se pegaria o item agora (braço parado e vazio, destino aceita) e recebe só a quantidade do tier; o resto fica no Divisor, bloqueado, e é distribuído de novo no próximo tick. Um Divisor na lateral de um Inseridor não se conecta (as laterais do Inseridor são só para esteiras que terminam nele), e dois Inseridores encostados continuam sem conexão (README "Inseridores").
+- Divisor com uma única saída para um Inseridor que abastece uma máquina: se a máquina não aceita o item da vez (ex.: minério com o Principal já completo, esperando carvão), o Divisor trava, como uma esteira que termina num Inseridor. Na esteira única, o carvão precisa vir entre os minérios.
 - Caminho do item no Divisor: calculado no Core (`PathMath.GetHubPosition`), com teste, em vez de no adaptador.
-- Interfaces: o botão OK foi para o topo, ao lado do título, e a caixa fica encostada no topo da tela quando não cabe, para a interface do Filtro Completo (inventário + categorias) caber em 1080p. A revisão para 1280×720 é da Fase 7.
+- Interfaces: o botão OK foi para o topo, ao lado do título, e a caixa fica encostada no canto de cima da tela quando não cabe. O `ConfigMenu` aceita colunas (`ConfigColumn`); o Filtro Completo usa duas: modo, qualidade e context tags à esquerda (360 px), itens com o inventário e categorias à direita.
 - `ToggleRow` não foi criado: nenhuma interface desta fase tem um liga/desliga isolado, e o `ToggleGroupRow` cobre qualidades e categorias. `ToggleGroupRow` e `CycleRow` são genéricos no tipo do valor.
 - `ItemListRow`: os 12 slots fantasma são um pouco menores (52 px) para o rótulo caber na mesma linha; item repetido ou lista cheia toca o som de "cancelar".
 - Um filtro recolhido e colocado de novo volta vazio, como a configuração do Inseridor (o jogo copia o `modData` do item segurado).

@@ -44,7 +44,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Alterado
 - Interfaces: o botão OK fica no topo, ao lado do título, e a caixa se ajusta à linha mais larga (o inventário dos filtros).
-- O Inseridor ignora um Divisor encostado na lateral (Divisor e Inseridor não se conectam).
+- O Inseridor se conecta ao Divisor: apontando para ele é uma entrada (o Divisor puxa da mão), com a traseira virada para ele é uma saída (o Divisor entrega na mão só o que o Inseridor pegaria). Um Divisor na lateral do Inseridor continua sem conexão.
+- Interfaces em colunas: a do Filtro Completo usa duas colunas para caber em 1280×720 e 1366×768.
 - Extrator e Inseridor unificados no Inseridor (README "Inseridores"): ele pega atrás (baú, máquina ou esteira) e entrega na frente. O placeholder passa a ser um quadrado azul com um triângulo na borda do destino.
 
 ### Removido

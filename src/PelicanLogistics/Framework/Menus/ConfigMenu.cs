@@ -11,29 +11,40 @@ namespace PelicanLogistics.Framework.Menus;
 
 /// <summary>
 /// Interface base de configuração dos blocos: caixa centralizada com o título e o botão OK no topo e as linhas
-/// (<see cref="ConfigRow"/>) empilhadas. Fecha também com Esc ou a tecla de menu. Cada linha grava a alteração
-/// na hora, pelo seu próprio callback.
+/// (<see cref="ConfigRow"/>) empilhadas em uma ou mais colunas (<see cref="ConfigColumn"/>). Fecha também com Esc ou
+/// a tecla de menu. Cada linha grava a alteração na hora, pelo seu próprio callback.
 /// </summary>
 internal class ConfigMenu : IClickableMenu
 {
-    private const int MenuWidth = 720;
+    /// <summary>Largura da coluna de uma interface de coluna única.</summary>
+    private const int SingleColumnWidth = 656;
+
     private const int Padding = 32;
     private const int TitleHeight = 72;
     private const int RowSpacing = 8;
+    private const int ColumnGap = 32;
     private const int OkSize = 64;
 
     /// <summary>Fundo da caixa em <see cref="Game1.menuTexture"/>.</summary>
     private static readonly Rectangle BackgroundSource = new(0, 256, 60, 60);
 
     private readonly string title;
+    private readonly IReadOnlyList<ConfigColumn> columns;
     private readonly IReadOnlyList<ConfigRow> rows;
     private readonly ClickableTextureComponent okButton;
 
+    /// <summary>Interface de uma coluna.</summary>
     public ConfigMenu(string title, string okText, IReadOnlyList<ConfigRow> rows)
-        : base(0, 0, ComputeWidth(rows), ComputeHeight(rows, ComputeWidth(rows)))
+        : this(title, okText, new[] { new ConfigColumn(rows, SingleColumnWidth) })
+    {
+    }
+
+    public ConfigMenu(string title, string okText, IReadOnlyList<ConfigColumn> columns)
+        : base(0, 0, ComputeWidth(columns), ComputeHeight(columns))
     {
         this.title = title;
-        this.rows = rows;
+        this.columns = columns;
+        this.rows = columns.SelectMany(c => c.Rows).ToList();
         this.okButton = new ClickableTextureComponent(
             "OK",
             new Rectangle(0, 0, OkSize, OkSize),
@@ -133,34 +144,47 @@ internal class ConfigMenu : IClickableMenu
             row.OnClose();
     }
 
-    private static int ComputeWidth(IReadOnlyList<ConfigRow> rows)
+    private static int ComputeWidth(IReadOnlyList<ConfigColumn> columns)
     {
-        return Math.Max(MenuWidth, rows.Select(r => r.MinWidth).DefaultIfEmpty(0).Max() + (Padding * 2));
+        return (Padding * 2) + columns.Sum(c => c.Width) + (ColumnGap * Math.Max(0, columns.Count - 1));
     }
 
-    private static int ComputeHeight(IReadOnlyList<ConfigRow> rows, int menuWidth)
+    /// <summary>Altura da coluna mais alta, mais título e margens. Informa antes a largura a cada linha.</summary>
+    private static int ComputeHeight(IReadOnlyList<ConfigColumn> columns)
     {
-        foreach (ConfigRow row in rows)
-            row.Measure(menuWidth - (Padding * 2));
+        int tallest = 0;
+        foreach (ConfigColumn column in columns)
+        {
+            foreach (ConfigRow row in column.Rows)
+                row.Measure(column.Width);
 
-        return Padding + TitleHeight + rows.Sum(r => r.Height + RowSpacing) - RowSpacing + Padding;
+            tallest = Math.Max(tallest, column.Rows.Sum(r => r.Height + RowSpacing) - RowSpacing);
+        }
+
+        return Padding + TitleHeight + tallest + Padding;
     }
 
     /// <summary>
-    /// Centraliza a caixa e posiciona as linhas e o botão OK (no canto de cima, na altura do título). Se a caixa não
-    /// couber na tela, ela fica encostada no topo, para o título e o OK continuarem visíveis.
+    /// Centraliza a caixa e posiciona as colunas e o botão OK (no canto de cima, na altura do título). Se a caixa não
+    /// couber na tela, ela fica encostada no canto de cima, para o título e o OK continuarem visíveis.
     /// </summary>
     private void Layout()
     {
         Vector2 topLeft = Utility.getTopLeftPositionForCenteringOnScreen(this.width, this.height);
-        this.xPositionOnScreen = (int)topLeft.X;
+        this.xPositionOnScreen = Math.Max(0, (int)topLeft.X);
         this.yPositionOnScreen = Math.Max(0, (int)topLeft.Y);
 
-        int y = this.yPositionOnScreen + Padding + TitleHeight;
-        foreach (ConfigRow row in this.rows)
+        int x = this.xPositionOnScreen + Padding;
+        foreach (ConfigColumn column in this.columns)
         {
-            row.SetBounds(this.xPositionOnScreen + Padding, y, this.width - (Padding * 2));
-            y += row.Height + RowSpacing;
+            int y = this.yPositionOnScreen + Padding + TitleHeight;
+            foreach (ConfigRow row in column.Rows)
+            {
+                row.SetBounds(x, y, column.Width);
+                y += row.Height + RowSpacing;
+            }
+
+            x += column.Width + ColumnGap;
         }
 
         this.okButton.bounds = new Rectangle(
