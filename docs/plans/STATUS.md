@@ -11,7 +11,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
 | 4: Persistência | Aguardando teste local | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | |
-| 5: Roteamento | Não iniciada | | | |
+| 5: Roteamento | Aguardando teste local | `fase-5-roteamento` | (a definir) | |
 | 6: Itens restantes | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
@@ -52,6 +52,9 @@ Formato sugerido:
 - Não testado: destino cheio com o item esperando na mão e quebrar um Inseridor com item na mão (os testes do Core cobrem os dois).
 - [x] Ajuste: remover a migração dos Extratores (`LegacyMigration`, `ItemIds.LegacyExtractor`, `ModDataKeys.LegacyExtractorSource` e a chamada no `WorldRegistry.Rebuild`). O usuário não tem mais saves com Extratores e não vai precisar dela. A proteção do `Added` (ignorar tile que já tem nó) pode ficar. **Feito na Fase 4.**
 - Observação de desempenho (não é bug): sem nada para pegar (ex.: baú só com madeira abastecendo uma fornalha), o Inseridor testa todas as pilhas do baú contra as regras da máquina a cada tick. Se o teste de desempenho da Fase 7 mostrar queda de FPS, fazer o Inseridor esperar alguns ticks antes de tentar de novo depois de uma tentativa sem sucesso.
+
+### Da fase 4
+- Nenhuma pendência registrada. O PR #5 foi mesclado sem o resultado do teste local nesta página; a linha da Fase 4 continua "Aguardando teste local" até o usuário registrar o teste.
 
 ---
 
@@ -108,3 +111,19 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Erro ao salvar: todos os itens vão para o inventário global sem estado (`WriteSaveData` com `null`); ao carregar, caem perto da casa.
 - "Perto da casa da fazenda" = tile de `Farm.GetMainFarmHouseEntry()`.
 - Mensagens de log em pt-BR no código, como as já existentes no `WorldRegistry`; sem textos novos para o jogador no `i18n`.
+
+### Fase 5
+- Branch: o plano pede `fase-5-roteamento`; esta sessão rodou localmente (não na nuvem), então foi usado o nome do plano.
+- Pendências da Fase 4: nenhuma registrada (ver acima).
+- Compilação do adaptador: esta sessão tinha o jogo instalado, então o mod foi compilado contra o jogo (0 avisos, 0 erros), sem instalar na pasta `Mods` (`-p:EnableModDeploy=false`). As APIs novas foram conferidas no código descompilado; falta só o teste no jogo.
+- Regras do filtro no `modData`: JSON ausente ou corrompido, ou modo inválido, dá a regra vazia (que não deixa passar nada); valores inválidos dentro das listas (nulos, vazios, qualidade fora de 0/1/2/4) são descartados. O modo é gravado pelo nome (`"Whitelist"`/`"Blacklist"`).
+- Context tags: a interface separa por vírgula, tira os espaços, passa para minúsculas (como as tags do jogo) e não repete.
+- Categorias do Filtro Completo: uma opção por categoria do jogo, com as constantes de `StardewValley.Object`. O jogo mostra "Mineral" para as categorias -2 e -12: o **quartzo** e as gemas são da -2 (**Gemas**), os minerais dos geodos da -12 (**Minerais**). Por isso o item do checklist "lista branca com Minerais deixa passar quartzo" virou "com **Gemas**".
+- Divisor: puxa a próxima entrada no mesmo tick em que distribuiu (como uma esteira que recebe logo depois de entregar), então cada pilha leva 15 ticks para atravessá-lo.
+- Divisor: a "saída livre" é a que aceita o item agora (`CanAccept`): um filtro que ainda está passando o item anterior conta como ocupado e o item vai como excedente para as saídas sem filtro (regra 4 do README).
+- Inseridor: um Divisor encostado na lateral não conta como entrada (D4: Divisor e Inseridor não se conectam). Antes desta fase não fazia diferença.
+- Caminho do item no Divisor: calculado no Core (`PathMath.GetHubPosition`), com teste, em vez de no adaptador.
+- Interfaces: o botão OK foi para o topo, ao lado do título, e a caixa fica encostada no topo da tela quando não cabe, para a interface do Filtro Completo (inventário + categorias) caber em 1080p. A revisão para 1280×720 é da Fase 7.
+- `ToggleRow` não foi criado: nenhuma interface desta fase tem um liga/desliga isolado, e o `ToggleGroupRow` cobre qualidades e categorias. `ToggleGroupRow` e `CycleRow` são genéricos no tipo do valor.
+- `ItemListRow`: os 12 slots fantasma são um pouco menores (52 px) para o rótulo caber na mesma linha; item repetido ou lista cheia toca o som de "cancelar".
+- Um filtro recolhido e colocado de novo volta vazio, como a configuração do Inseridor (o jogo copia o `modData` do item segurado).
