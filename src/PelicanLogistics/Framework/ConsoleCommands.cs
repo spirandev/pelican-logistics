@@ -7,6 +7,7 @@ using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Framework.World;
 using StardewModdingAPI;
@@ -38,7 +39,7 @@ internal sealed class ConsoleCommands
         this.helper.ConsoleCommands.Add("pl_inspect", this.helper.Translation.Get("command.inspect.description"), this.Inspect);
     }
 
-    /// <summary>pl_give: coloca no inventário 10 de cada item do mod.</summary>
+    /// <summary>pl_give: coloca no inventário 10 de cada item do mod (blocos e acessórios).</summary>
     private void Give(string command, string[] args)
     {
         if (!Context.IsWorldReady)
@@ -47,9 +48,9 @@ internal sealed class ConsoleCommands
             return;
         }
 
-        foreach (string id in ItemIds.AllBlocks)
+        foreach (string qualifiedId in ItemIds.AllBlocks.Select(ItemIds.Qualified).Concat(ItemIds.AllAccessories.Select(ItemIds.QualifiedAccessory)))
         {
-            Item item = ItemRegistry.Create(ItemIds.Qualified(id), GiveAmount);
+            Item item = ItemRegistry.Create(qualifiedId, GiveAmount);
             Game1.player.addItemByMenuIfNecessary(item);
         }
 
@@ -150,8 +151,17 @@ internal sealed class ConsoleCommands
                 break;
             case InserterNode inserter:
                 line.Append($" tier={inserter.Tier} source={inserter.Source} slot={inserter.SlotMode}");
+                if (inserter.Tier == TransferTier.Configurable)
+                    line.Append($" amount={inserter.ConfiguredAmount}");
                 line.Append($" cooldown={inserter.Cooldown} lastInput={inserter.LastInput?.ToString() ?? "-"}");
                 line.Append($" inputs={string.Join(",", inserter.Inputs)}");
+                if (inserter.Regulator != null)
+                    line.Append($" regulator={DescribeRegulator(inserter.Regulator)}");
+                break;
+            case UndergroundBeltNode underground:
+                line.Append($" role={underground.Role} partner={underground.Partner?.Position.ToString() ?? "-"}");
+                if (underground.Role == UndergroundRole.Entrance)
+                    line.Append($" tunnel={underground.TunnelLength}");
                 break;
             case FilterNode filter:
                 line.Append($" rule={DescribeRule(filter.Rule)}");
@@ -198,6 +208,14 @@ internal sealed class ConsoleCommands
             default:
                 return rule.GetType().Name;
         }
+    }
+
+    /// <summary>Regra do Regulador em uma linha, ex.: "General(50)" ou "PerItem((O)388:50,(O)390:100)".</summary>
+    private static string DescribeRegulator(RegulatorRule rule)
+    {
+        return rule.Mode == RegulatorMode.General
+            ? $"General({rule.GeneralLimit})"
+            : $"PerItem({string.Join(",", rule.PerItemLimits.Select(p => $"{p.Key}:{p.Value}"))})";
     }
 
     private static string DescribeSides(IReadOnlyList<Direction> sides)

@@ -6,7 +6,8 @@ namespace PelicanLogistics.Framework.Menus;
 
 /// <summary>
 /// Uma linha de configuração do <see cref="ConfigMenu"/>: <see cref="CycleRow{TValue}"/>, <see cref="ItemPickerRow"/>,
-/// <see cref="ItemListRow"/>, <see cref="ToggleGroupRow{TValue}"/> e <see cref="TextRow"/>. A Fase 6 acrescenta NumberRow e ButtonRow.
+/// <see cref="ItemListRow"/>, <see cref="ToggleGroupRow{TValue}"/>, <see cref="TextRow"/>, <see cref="NumberRow"/>,
+/// <see cref="ButtonRow"/>, <see cref="LabelRow"/>, <see cref="RegulatorItemRow"/> e <see cref="RegulatorItemPickerRow"/>.
 /// </summary>
 internal abstract class ConfigRow
 {

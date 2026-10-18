@@ -20,6 +20,7 @@ public sealed class ModEntry : Mod
     private WorldRegistry registry = null!;
     private PlacementController placement = null!;
     private BlockMenuController menus = null!;
+    private AccessoryController accessories = null!;
     private SaveManager saves = null!;
 
     public override void Entry(IModHelper helper)
@@ -29,6 +30,7 @@ public sealed class ModEntry : Mod
         this.registry = new WorldRegistry(this.Monitor, () => this.placement.CurrentDirection);
         this.placement = new PlacementController(helper, this.config, this.registry);
         this.menus = new BlockMenuController(helper, this.registry);
+        this.accessories = new AccessoryController(helper, this.registry);
         this.saves = new SaveManager(helper, this.Monitor, this.registry);
         var renderer = new NodeRenderer(this.registry, this.placement);
 
@@ -50,13 +52,23 @@ public sealed class ModEntry : Mod
 
     private void ApplyPatches(NodeRenderer renderer)
     {
+        var harmony = new Harmony(this.ModManifest.UniqueID);
         try
         {
-            ObjectDrawPatch.Apply(new Harmony(this.ModManifest.UniqueID), renderer, this.Monitor);
+            ObjectDrawPatch.Apply(harmony, renderer, this.Monitor);
         }
         catch (Exception ex)
         {
             this.Monitor.Log($"Falha ao aplicar os patches Harmony; os blocos não serão desenhados.\n{ex}", LogLevel.Error);
+        }
+
+        try
+        {
+            PassablePatch.Apply(harmony);
+        }
+        catch (Exception ex)
+        {
+            this.Monitor.Log($"Falha ao aplicar o patch da Ponte; não será possível passar por cima das esteiras.\n{ex}", LogLevel.Error);
         }
     }
 
@@ -108,9 +120,11 @@ public sealed class ModEntry : Mod
         this.placement.OnButtonsChanged(e);
     }
 
+    /// <summary>Acessórios primeiro: segurando uma Ponte ou um Regulador, o clique aplica o acessório em vez de abrir a interface.</summary>
     private void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
-        this.menus.OnButtonPressed(e);
+        if (!this.accessories.OnButtonPressed(e))
+            this.menus.OnButtonPressed(e);
     }
 
     private void OnRenderedWorld(object? sender, RenderedWorldEventArgs e)
