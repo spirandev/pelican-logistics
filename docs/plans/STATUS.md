@@ -11,7 +11,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 2: Máquinas | Concluída | `fase-2-maquinas` | [#3](https://github.com/spirandev/pelican-logistics/pull/3) | OK em 2026-10-17 (Barril e Cristalário não testados) |
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
 | 4: Persistência | Aguardando teste local | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | |
-| 5: Roteamento | Aguardando teste local | `fase-5-roteamento` | (a definir) | |
+| 5: Roteamento | Aguardando teste local | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | |
 | 6: Itens restantes | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
