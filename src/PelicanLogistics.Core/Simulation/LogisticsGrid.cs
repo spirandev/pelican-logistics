@@ -5,6 +5,7 @@ using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 
 namespace PelicanLogistics.Core.Simulation;
 
@@ -60,6 +61,47 @@ public sealed class LogisticsGrid
 
         this.MarkDirty();
         return new RemovalResult(items, node.Accessory);
+    }
+
+    /// <summary>
+    /// Coloca um acessório sobre o bloco (README "Acessórios"): a Ponte só numa esteira (qualquer velocidade), o
+    /// Regulador só num Inseridor (qualquer versão), e no máximo um acessório por tile. O Regulador recebe 'regulatorRule'
+    /// (ou a regra padrão); para a Ponte, 'regulatorRule' é ignorada. Retorna false se não colocou.
+    /// </summary>
+    public bool TrySetAccessory(TilePos pos, AccessoryKind kind, RegulatorRule? regulatorRule = null)
+    {
+        LogisticsNode? node = this.Get(pos);
+        if (node == null || node.Accessory != AccessoryKind.None)
+            return false;
+
+        switch (kind)
+        {
+            case AccessoryKind.Bridge when node is BeltNode:
+                node.Accessory = AccessoryKind.Bridge;
+                return true;
+
+            case AccessoryKind.Regulator when node is InserterNode inserter:
+                inserter.Accessory = AccessoryKind.Regulator;
+                inserter.Regulator = regulatorRule ?? new RegulatorRule();
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>Tira o acessório do bloco e o devolve (<see cref="AccessoryKind.None"/> se não havia bloco ou acessório).</summary>
+    public AccessoryKind RemoveAccessory(TilePos pos)
+    {
+        LogisticsNode? node = this.Get(pos);
+        if (node == null)
+            return AccessoryKind.None;
+
+        AccessoryKind removed = node.Accessory;
+        node.Accessory = AccessoryKind.None;
+        if (node is InserterNode inserter)
+            inserter.Regulator = null;
+        return removed;
     }
 
     public LogisticsNode? Get(TilePos pos)

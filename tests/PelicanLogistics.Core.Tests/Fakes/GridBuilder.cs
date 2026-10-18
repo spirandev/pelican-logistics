@@ -3,6 +3,7 @@ using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 
 namespace PelicanLogistics.Core.Tests.Fakes;
@@ -65,6 +66,26 @@ public sealed class GridBuilder
         return this;
     }
 
+    /// <summary>Esteira Subterrânea com o papel decidido como o adaptador faz ao colocar (<see cref="UndergroundPairing.DecideRole"/>).</summary>
+    public GridBuilder Underground(int x, int y, Direction facing)
+    {
+        var pos = new TilePos(x, y);
+        return this.Underground(x, y, facing, UndergroundPairing.DecideRole(this.Grid, pos, facing));
+    }
+
+    public GridBuilder Underground(int x, int y, Direction facing, UndergroundRole role)
+    {
+        this.Grid.Add(new UndergroundBeltNode(new TilePos(x, y), facing, role));
+        return this;
+    }
+
+    /// <summary>Coloca um Regulador com a regra indicada sobre o Inseridor do tile.</summary>
+    public GridBuilder Regulator(int x, int y, RegulatorRule rule)
+    {
+        Assert.True(this.Grid.TrySetAccessory(new TilePos(x, y), AccessoryKind.Regulator, rule));
+        return this;
+    }
+
     public GridBuilder Machine(int x, int y, FakeMachine machine)
     {
         this.Endpoints.Endpoints[new TilePos(x, y)] = machine;
@@ -107,6 +128,8 @@ public sealed class GridBuilder
 
     public SplitterNode SplitterAt(int x, int y) => this.NodeAt<SplitterNode>(x, y);
 
+    public UndergroundBeltNode UndergroundAt(int x, int y) => this.NodeAt<UndergroundBeltNode>(x, y);
+
     /// <summary>Slots virtuais da máquina no tile, ou null se não há nada guardado.</summary>
     public VirtualSlots? SlotsAt(int x, int y) => this.Grid.MachineSlots.Get(new TilePos(x, y));
 
@@ -116,7 +139,7 @@ public sealed class GridBuilder
         return Assert.IsType<T>(this.Grid.Get(new TilePos(x, y)));
     }
 
-    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós: esteiras, filtros, Divisores e mãos dos Inseridores).</summary>
+    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós: esteiras, filtros, Divisores, Subterrâneas e mãos dos Inseridores).</summary>
     public int CountInTransit()
     {
         return this.Grid.Nodes.SelectMany(n => n.Slots).Where(s => s.Item != null).Sum(s => s.Item!.Count);

@@ -1,6 +1,7 @@
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Core.Tests.Fakes;
 
@@ -28,7 +29,8 @@ public class LogisticsGridTests
     public void Remove_ReturnsAccessory()
     {
         var grid = new LogisticsGrid();
-        grid.Add(new BeltNode(new TilePos(0, 0), Direction.East) { Accessory = AccessoryKind.Bridge });
+        grid.Add(new BeltNode(new TilePos(0, 0), Direction.East));
+        Assert.True(grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.Bridge));
 
         RemovalResult result = grid.Remove(new TilePos(0, 0));
 
@@ -194,5 +196,141 @@ public class LogisticsGridTests
         g.Run(1);
 
         Assert.Equal(0, g.Grid.MachineSlots.Count);
+    }
+
+    // Acessórios (Fase 6).
+
+    [Theory]
+    [InlineData(BeltTier.Basic)]
+    [InlineData(BeltTier.Fast)]
+    [InlineData(BeltTier.Express)]
+    public void TrySetAccessory_Bridge_WorksOnBeltsOfEverySpeed(BeltTier tier)
+    {
+        var g = new GridBuilder().Belt(0, 0, Direction.East, tier);
+
+        Assert.True(g.Grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.Bridge));
+
+        Assert.Equal(AccessoryKind.Bridge, g.BeltAt(0, 0).Accessory);
+    }
+
+    [Fact]
+    public void TrySetAccessory_Bridge_FailsOnFilterSplitterInserterAndUnderground()
+    {
+        var g = new GridBuilder()
+            .Filter(0, 0, Direction.East, "(O)388")
+            .Splitter(2, 0)
+            .Inserter(4, 0, Direction.East)
+            .Underground(6, 0, Direction.East);
+
+        foreach (int x in new[] { 0, 2, 4, 6 })
+        {
+            Assert.False(g.Grid.TrySetAccessory(new TilePos(x, 0), AccessoryKind.Bridge));
+            Assert.Equal(AccessoryKind.None, g.Grid.Get(new TilePos(x, 0))!.Accessory);
+        }
+    }
+
+    [Fact]
+    public void TrySetAccessory_Regulator_OnlyOnInserters_WithDefaultRule()
+    {
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Filter(1, 0, Direction.East, "(O)388")
+            .Splitter(3, 0)
+            .Underground(5, 0, Direction.East)
+            .Inserter(7, 0, Direction.East, TransferTier.Configurable);
+
+        foreach (int x in new[] { 0, 1, 3, 5 })
+            Assert.False(g.Grid.TrySetAccessory(new TilePos(x, 0), AccessoryKind.Regulator));
+
+        Assert.True(g.Grid.TrySetAccessory(new TilePos(7, 0), AccessoryKind.Regulator));
+        InserterNode inserter = g.InserterAt(7, 0);
+        Assert.Equal(AccessoryKind.Regulator, inserter.Accessory);
+        Assert.NotNull(inserter.Regulator);
+        Assert.Equal(RegulatorMode.General, inserter.Regulator!.Mode);
+        Assert.Equal(Balance.RegulatorDefaultLimit, inserter.Regulator.GeneralLimit);
+    }
+
+    [Fact]
+    public void TrySetAccessory_Regulator_KeepsTheGivenRule()
+    {
+        var rule = new RegulatorRule { Mode = RegulatorMode.PerItem, PerItemLimits = { ["(O)388"] = 30 } };
+        var g = new GridBuilder().Inserter(0, 0, Direction.East);
+
+        Assert.True(g.Grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.Regulator, rule));
+
+        Assert.Same(rule, g.InserterAt(0, 0).Regulator);
+    }
+
+    [Fact]
+    public void TrySetAccessory_SecondAccessoryOnTheSameTile_Fails()
+    {
+        var original = new RegulatorRule { GeneralLimit = 7 };
+        var g = new GridBuilder().Belt(0, 0, Direction.East).Inserter(1, 0, Direction.East);
+        Assert.True(g.Grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.Bridge));
+        Assert.True(g.Grid.TrySetAccessory(new TilePos(1, 0), AccessoryKind.Regulator, original));
+
+        Assert.False(g.Grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.Bridge));
+        Assert.False(g.Grid.TrySetAccessory(new TilePos(1, 0), AccessoryKind.Regulator, new RegulatorRule()));
+
+        Assert.Equal(AccessoryKind.Bridge, g.BeltAt(0, 0).Accessory);
+        Assert.Same(original, g.InserterAt(1, 0).Regulator);
+    }
+
+    [Fact]
+    public void TrySetAccessory_NoneOrEmptyTile_Fails()
+    {
+        var g = new GridBuilder().Belt(0, 0, Direction.East);
+
+        Assert.False(g.Grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.None));
+        Assert.False(g.Grid.TrySetAccessory(new TilePos(5, 5), AccessoryKind.Bridge));
+    }
+
+    [Fact]
+    public void RemoveAccessory_ReturnsItAndClearsTheRegulatorRule()
+    {
+        var g = new GridBuilder().Belt(0, 0, Direction.East).Inserter(1, 0, Direction.East);
+        g.Grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.Bridge);
+        g.Grid.TrySetAccessory(new TilePos(1, 0), AccessoryKind.Regulator);
+
+        Assert.Equal(AccessoryKind.Bridge, g.Grid.RemoveAccessory(new TilePos(0, 0)));
+        Assert.Equal(AccessoryKind.Regulator, g.Grid.RemoveAccessory(new TilePos(1, 0)));
+
+        Assert.Equal(AccessoryKind.None, g.BeltAt(0, 0).Accessory);
+        Assert.Equal(AccessoryKind.None, g.InserterAt(1, 0).Accessory);
+        Assert.Null(g.InserterAt(1, 0).Regulator);
+        Assert.Equal(AccessoryKind.None, g.Grid.RemoveAccessory(new TilePos(0, 0)));
+        Assert.Equal(AccessoryKind.None, g.Grid.RemoveAccessory(new TilePos(9, 9)));
+
+        // Sem acessório, o tile aceita outro.
+        Assert.True(g.Grid.TrySetAccessory(new TilePos(0, 0), AccessoryKind.Bridge));
+    }
+
+    [Fact]
+    public void Bridge_DoesNotChangeTheFlow_RemoveReturnsBridgeAndItem()
+    {
+        FakeItem Run(bool bridge, out GridBuilder g)
+        {
+            var item = new FakeItem("wood", 3);
+            g = new GridBuilder()
+                .Belt(0, 0, Direction.East)
+                .Belt(1, 0, Direction.East)
+                .Belt(2, 0, Direction.East)
+                .Item(0, 0, item);
+            if (bridge)
+                g.Grid.TrySetAccessory(new TilePos(1, 0), AccessoryKind.Bridge);
+            g.Run(90);
+            return item;
+        }
+
+        Run(false, out GridBuilder without);
+        FakeItem item = Run(true, out GridBuilder with);
+
+        Assert.Same(item, with.BeltAt(1, 0).Slot.Item);
+        Assert.Equal(without.BeltAt(1, 0).Slot.Progress, with.BeltAt(1, 0).Slot.Progress);
+
+        RemovalResult result = with.Grid.Remove(new TilePos(1, 0));
+
+        Assert.Equal(AccessoryKind.Bridge, result.Accessory);
+        Assert.Same(item, Assert.Single(result.Items));
     }
 }

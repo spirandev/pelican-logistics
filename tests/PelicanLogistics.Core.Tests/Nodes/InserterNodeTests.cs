@@ -1,6 +1,7 @@
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Core.Tests.Fakes;
 
@@ -1074,6 +1075,156 @@ public class InserterNodeTests
         };
 
         Assert.Equal(expected, inserter.ConfiguredAmount);
+    }
+
+    [Fact]
+    public void Inserter_StackTier_BeltToAlmostFullChest_InsertsWhatFits_RestStaysOnBelt()
+    {
+        var target = new FakeChest(1, new FakeItem("wood", 970));
+        var stack = new FakeItem("wood", 50);
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Inserter(1, 0, Direction.East, TransferTier.Stack)
+            .Chest(2, 0, target)
+            .Item(0, 0, stack, Balance.End);
+
+        g.Run(200);
+
+        Assert.Equal(999, target.CountTotal());
+        Assert.Same(stack, g.BeltAt(0, 0).Slot.Item);
+        Assert.Equal(21, stack.Count);
+        Assert.True(g.InserterAt(1, 0).Hand.IsEmpty);
+    }
+
+    [Fact]
+    public void Inserter_ConfigurableTier_Amount5_StackOf12_EntersInThreeOperations()
+    {
+        var target = new FakeChest();
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Inserter(1, 0, Direction.East, TransferTier.Configurable)
+            .Chest(2, 0, target)
+            .Item(0, 0, new FakeItem("wood", 12), Balance.End);
+        InserterNode inserter = g.InserterAt(1, 0);
+        inserter.ConfiguredAmount = 5;
+
+        var operations = new List<int>();
+        for (int tick = 0; tick < 300; tick++)
+        {
+            bool wasEmpty = inserter.Hand.IsEmpty;
+            g.Run(1);
+            if (wasEmpty && !inserter.Hand.IsEmpty)
+                operations.Add(inserter.Hand.Item!.Count);
+        }
+
+        Assert.Equal(new[] { 5, 5, 2 }, operations);
+        Assert.Equal(12, target.CountTotal());
+        Assert.True(g.BeltAt(0, 0).Slot.IsEmpty);
+    }
+
+    // Regulador (Fase 6).
+
+    [Fact]
+    public void Regulator_General50_ChestWith45_ReceivesOnly5OfAStackOf20_ThenStops()
+    {
+        var target = new FakeChest(36, new FakeItem("stone", 45));
+        var stack = new FakeItem("wood", 20);
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Inserter(1, 0, Direction.East, TransferTier.Stack)
+            .Chest(2, 0, target)
+            .Regulator(1, 0, new RegulatorRule { Mode = RegulatorMode.General, GeneralLimit = 50 })
+            .Item(0, 0, stack, Balance.End);
+
+        g.Run(1);
+        Assert.Equal(5, g.InserterAt(1, 0).Hand.Item!.Count);
+
+        g.Run(300);
+
+        Assert.Equal(50, target.CountTotal());
+        Assert.Equal(5, target.CountById("wood"));
+        Assert.Equal(15, stack.Count);
+        Assert.Same(stack, g.BeltAt(0, 0).Slot.Item);
+        Assert.True(g.InserterAt(1, 0).Hand.IsEmpty);
+    }
+
+    [Fact]
+    public void Regulator_PerItem_WoodStopsAt50_StoneAt100_ClayIsNotLimited()
+    {
+        var source = new FakeChest(36, new FakeItem("wood", 80), new FakeItem("stone", 150), new FakeItem("clay", 40));
+        var target = new FakeChest();
+        var g = new GridBuilder()
+            .Chest(0, 0, source)
+            .Inserter(1, 0, Direction.East, TransferTier.Configurable)
+            .Chest(2, 0, target)
+            .Regulator(1, 0, new RegulatorRule { Mode = RegulatorMode.PerItem, PerItemLimits = { ["wood"] = 50, ["stone"] = 100 } });
+        g.InserterAt(1, 0).ConfiguredAmount = 30;
+
+        g.Run(1000);
+
+        Assert.Equal(50, target.CountById("wood"));
+        Assert.Equal(100, target.CountById("stone"));
+        Assert.Equal(40, target.CountById("clay"));
+        Assert.Equal(30, source.CountById("wood"));
+        Assert.Equal(50, source.CountById("stone"));
+        Assert.Equal(0, source.CountById("clay"));
+    }
+
+    [Fact]
+    public void Regulator_ChestChangesDuringTravel_DeliversOnlyWhatIsAllowed_RestWaitsInHand()
+    {
+        var target = new FakeChest(36, new FakeItem("stone", 40));
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Inserter(1, 0, Direction.East, TransferTier.Stack)
+            .Chest(2, 0, target)
+            .Regulator(1, 0, new RegulatorRule { GeneralLimit = 50 })
+            .Item(0, 0, new FakeItem("wood", 20), Balance.End);
+
+        g.Run(1);
+        Assert.Equal(10, g.InserterAt(1, 0).Hand.Item!.Count);
+
+        // Outro Inseridor (ou o jogador) põe 7 itens no baú durante a ida.
+        target.Insert(new FakeItem("clay", 7), 7);
+        g.Run(TravelTicks);
+
+        Assert.Equal(50, target.CountTotal());
+        Assert.Equal(3, target.CountById("wood"));
+        Assert.Equal(7, g.InserterAt(1, 0).Hand.Item!.Count);
+        Assert.True(g.InserterAt(1, 0).Hand.Blocked);
+    }
+
+    [Fact]
+    public void Regulator_IsIgnored_WhenTheDestinationIsAMachine()
+    {
+        var ore = new FakeItem(FakeMachine.Ids.CopperOre, 8);
+        var g = MachineLine(FakeMachine.Furnace(), InserterSlotMode.Main, TransferTier.Stack)
+            .Regulator(1, 0, new RegulatorRule { GeneralLimit = 0 })
+            .Item(0, 0, ore, Balance.End);
+
+        g.Run(TravelTicks + 1);
+
+        Assert.Equal(5, g.SlotsAt(2, 0)!.Main!.Count);
+        Assert.Equal(3, ore.Count);
+    }
+
+    [Fact]
+    public void Regulator_Removed_InserterIsNoLongerLimited()
+    {
+        var target = new FakeChest(36, new FakeItem("stone", 50));
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Inserter(1, 0, Direction.East, TransferTier.Stack)
+            .Chest(2, 0, target)
+            .Regulator(1, 0, new RegulatorRule { GeneralLimit = 50 })
+            .Item(0, 0, new FakeItem("wood", 20), Balance.End);
+        g.Run(100);
+        Assert.Equal(50, target.CountTotal());
+
+        g.Grid.RemoveAccessory(new TilePos(1, 0));
+        g.Run(100);
+
+        Assert.Equal(70, target.CountTotal());
     }
 
     /// <summary>Roda até o Inseridor pegar 'count' vezes e devolve o lado de cada pegada.</summary>
