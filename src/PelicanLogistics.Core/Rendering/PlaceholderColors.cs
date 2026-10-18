@@ -7,7 +7,14 @@ public static class PlaceholderColors
     public static readonly Rgba BeltFast = new(150, 150, 150);
     public static readonly Rgba BeltExpress = new(95, 95, 95);
     public static readonly Rgba Bridge = new(139, 90, 43);
+
+    /// <summary>Juntas entre as tábuas da Ponte.</summary>
+    public static readonly Rgba BridgeJoint = new(95, 60, 25);
+
     public static readonly Rgba Underground = new(70, 70, 70);
+
+    /// <summary>Círculo da saída da Esteira Subterrânea (o da entrada é <see cref="Mark"/>, branco).</summary>
+    public static readonly Rgba UndergroundExit = new(0, 0, 0);
     public static readonly Rgba Inserter = new(40, 110, 230);
     public static readonly Rgba FilterCommon = new(60, 180, 75);
     public static readonly Rgba FilterComplete = new(25, 110, 45);

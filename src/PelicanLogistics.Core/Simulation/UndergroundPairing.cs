@@ -11,16 +11,22 @@ public static class UndergroundPairing
     public const int MaxDistance = Balance.UndergroundMaxGap + 1;
 
     /// <summary>
-    /// Papel de uma Esteira Subterrânea colocada em 'pos' com a direção 'facing', chamado pelo adaptador antes de criar
-    /// o nó: <see cref="UndergroundRole.Exit"/> se, olhando para trás até <see cref="MaxDistance"/> tiles, a primeira
-    /// Subterrânea com a mesma direção é uma entrada (ela ainda não tem par: o par de uma entrada é a primeira
-    /// Subterrânea à frente dela, e não há nenhuma entre as duas); senão <see cref="UndergroundRole.Entrance"/>.
+    /// Papel de uma Esteira Subterrânea colocada em 'pos' (ainda vazio) com a direção 'facing', chamado pelo adaptador
+    /// antes de criar o nó: <see cref="UndergroundRole.Exit"/> se, olhando para trás até <see cref="MaxDistance"/>
+    /// tiles, a primeira Subterrânea com a mesma direção é uma entrada sem par; senão <see cref="UndergroundRole.Entrance"/>.
     /// </summary>
-    /// <remarks>Não usa <see cref="UndergroundBeltNode.Partner"/>, que pode estar desatualizado até o próximo tick.</remarks>
+    /// <remarks>
+    /// "Sem par" é calculado na hora, como no <see cref="Recompute"/> (a primeira Subterrânea à frente da entrada não é
+    /// uma saída), e não pelo <see cref="UndergroundBeltNode.Partner"/>, que pode estar desatualizado até o próximo tick.
+    /// </remarks>
     public static UndergroundRole DecideRole(LogisticsGrid grid, TilePos pos, Direction facing)
     {
         UndergroundBeltNode? behind = FindFirst(grid, pos, facing.Opposite(), facing, out _);
-        return behind?.Role == UndergroundRole.Entrance ? UndergroundRole.Exit : UndergroundRole.Entrance;
+        if (behind?.Role != UndergroundRole.Entrance)
+            return UndergroundRole.Entrance;
+
+        UndergroundBeltNode? ahead = FindFirst(grid, behind.Position, facing, facing, out _);
+        return ahead?.Role == UndergroundRole.Exit ? UndergroundRole.Entrance : UndergroundRole.Exit;
     }
 
     /// <summary>
