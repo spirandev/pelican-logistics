@@ -57,6 +57,42 @@ public static class PlaceholderPainter
         return buffer;
     }
 
+    /// <summary>
+    /// Filtro: base cinza de esteira com um losango verde e uma seta branca para cima. O Filtro Completo é verde escuro
+    /// com um losango duplo (um contorno escuro dentro). O ícone do item do Filtro Comum é desenhado pelo adaptador.
+    /// </summary>
+    public static PixelBuffer PaintFilter(bool complete)
+    {
+        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+        buffer.FillRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.BeltBasic);
+        buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
+
+        Rgba green = complete ? PlaceholderColors.FilterComplete : PlaceholderColors.FilterCommon;
+        buffer.FillDiamond(8, 8, 6, green);
+        if (complete)
+        {
+            buffer.FillDiamond(8, 8, 4, PlaceholderColors.Outline);
+            buffer.FillDiamond(8, 8, 3, green);
+        }
+
+        buffer.DrawArrow(8, 4, Direction.North, PlaceholderColors.Mark);
+        return buffer;
+    }
+
+    /// <summary>Divisor: base cinza de esteira com um círculo roxo e 4 saídas (uma faixa roxa até o meio de cada borda).</summary>
+    public static PixelBuffer PaintSplitter()
+    {
+        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+        buffer.FillRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.BeltBasic);
+        buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
+
+        buffer.FillRect(6, 1, 4, SpriteSize - 2, PlaceholderColors.Splitter);
+        buffer.FillRect(1, 6, SpriteSize - 2, 4, PlaceholderColors.Splitter);
+        buffer.FillCircle(8, 8, 5.5f, PlaceholderColors.Splitter);
+        buffer.FillRect(7, 7, 2, 2, PlaceholderColors.Mark);
+        return buffer;
+    }
+
     /// <summary>Seta grande branca apontando para cima, em fundo transparente (seta fantasma de colocação).</summary>
     public static PixelBuffer PaintGhostArrow()
     {
