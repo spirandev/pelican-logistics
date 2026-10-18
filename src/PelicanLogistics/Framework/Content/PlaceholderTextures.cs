@@ -16,10 +16,13 @@ namespace PelicanLogistics.Framework.Content;
 /// Folha de ícones dos Big Craftables (<see cref="IconSheetAssetName"/>): 8 células por linha, cada uma com
 /// 16×32 pixels. Índices:
 /// <code>
-/// | Índice | Item      |
-/// |--------|-----------|
-/// | 0      | Esteira   |
-/// | 1      | Inseridor |
+/// | Índice | Item            |
+/// |--------|-----------------|
+/// | 0      | Esteira         |
+/// | 1      | Inseridor       |
+/// | 2      | Filtro Comum    |
+/// | 3      | Filtro Completo |
+/// | 4      | Divisor         |
 /// </code>
 /// As próximas fases acrescentam índices no fim de <see cref="Blocks"/>.
 /// </remarks>
@@ -37,6 +40,9 @@ internal static class PlaceholderTextures
     {
         (ItemIds.Belt, () => PlaceholderPainter.PaintBelt(BeltTier.Basic)),
         (ItemIds.Inserter, () => PlaceholderPainter.PaintInserter(TransferTier.Single)),
+        (ItemIds.FilterCommon, () => PlaceholderPainter.PaintFilter(false)),
+        (ItemIds.FilterComplete, () => PlaceholderPainter.PaintFilter(true)),
+        (ItemIds.Splitter, () => PlaceholderPainter.PaintSplitter()),
     };
 
     private static readonly Dictionary<string, Texture2D> WorldSprites = new();

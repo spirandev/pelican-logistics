@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Framework.Menus;
@@ -65,8 +66,28 @@ internal sealed class BlockMenuController
                             inserter.SlotMode = mode;
                     });
 
+            case ItemIds.FilterCommon:
+                return new CommonFilterMenu(
+                    i18n,
+                    NodeFactory.ReadCommonFilterRule(obj).QualifiedItemId,
+                    id => this.SetFilterRule(location, obj, pos, new CommonFilterRule { QualifiedItemId = id }));
+
+            case ItemIds.FilterComplete:
+            {
+                CompleteFilterRule rule = NodeFactory.ReadCompleteFilterRule(obj);
+                return new CompleteFilterMenu(i18n, rule, () => this.SetFilterRule(location, obj, pos, rule));
+            }
+
             default:
                 return null;
         }
+    }
+
+    /// <summary>Grava a regra no <c>modData</c> e a aplica na hora ao nó do filtro.</summary>
+    private void SetFilterRule(GameLocation location, SObject obj, TilePos pos, IFilterRule rule)
+    {
+        NodeFactory.WriteFilterRule(obj, rule);
+        if (this.registry.GetNode(location, pos) is FilterNode filter)
+            filter.Rule = rule;
     }
 }

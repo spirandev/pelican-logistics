@@ -1,4 +1,5 @@
 using System;
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
 using SObject = StardewValley.Object;
@@ -23,6 +24,9 @@ internal static class NodeFactory
                 Source = ReadPickupSource(obj),
                 SlotMode = ReadInserterSlotMode(obj),
             },
+            ItemIds.FilterCommon => new FilterNode(pos, facing, ReadCommonFilterRule(obj)),
+            ItemIds.FilterComplete => new FilterNode(pos, facing, ReadCompleteFilterRule(obj)),
+            ItemIds.Splitter => new SplitterNode(pos),
             _ => null,
         };
     }
@@ -57,6 +61,23 @@ internal static class NodeFactory
         obj.modData[ModDataKeys.InserterSlotMode] = mode.ToString();
     }
 
+    /// <summary>Regra do Filtro Comum; ausente ou inválida → filtro vazio (não deixa passar nada).</summary>
+    public static CommonFilterRule ReadCommonFilterRule(SObject obj)
+    {
+        return FilterRuleSerializer.DeserializeCommon(ReadRaw(obj, ModDataKeys.FilterRule));
+    }
+
+    /// <summary>Regra do Filtro Completo; ausente ou inválida → lista branca vazia (não deixa passar nada).</summary>
+    public static CompleteFilterRule ReadCompleteFilterRule(SObject obj)
+    {
+        return FilterRuleSerializer.DeserializeComplete(ReadRaw(obj, ModDataKeys.FilterRule));
+    }
+
+    public static void WriteFilterRule(SObject obj, IFilterRule rule)
+    {
+        obj.modData[ModDataKeys.FilterRule] = FilterRuleSerializer.Serialize(rule);
+    }
+
     /// <summary>
     /// Apaga a configuração do bloco. Ao colocar, o jogo copia o <c>modData</c> do item segurado (<c>getOne</c>),
     /// então um bloco recolhido e colocado de novo traria a configuração antiga.
@@ -65,6 +86,11 @@ internal static class NodeFactory
     {
         foreach (string key in ModDataKeys.Config)
             obj.modData.Remove(key);
+    }
+
+    private static string? ReadRaw(SObject obj, string key)
+    {
+        return obj.modData.TryGetValue(key, out string? raw) ? raw : null;
     }
 
     /// <summary>Lê um enum gravado pelo nome; valor ausente ou inválido → 'fallback'.</summary>

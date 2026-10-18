@@ -12,12 +12,15 @@ internal static class ItemIds
     public const string Prefix = "spirandev.PelicanLogistics_";
     public const string Belt = Prefix + "Belt";
     public const string Inserter = Prefix + "Inserter";
+    public const string FilterCommon = Prefix + "FilterCommon";
+    public const string FilterComplete = Prefix + "FilterComplete";
+    public const string Splitter = Prefix + "Splitter";
 
     /// <summary>Prefixo do tipo Big Craftable nos IDs qualificados.</summary>
     private const string BigCraftableTypePrefix = "(BC)";
 
     /// <summary>Todos os blocos (Big Craftables) do mod, na ordem da loja e do <c>pl_give</c>.</summary>
-    public static readonly IReadOnlyList<string> AllBlocks = new[] { Belt, Inserter };
+    public static readonly IReadOnlyList<string> AllBlocks = new[] { Belt, Inserter, FilterCommon, FilterComplete, Splitter };
 
     /// <summary>IDs qualificados de <see cref="AllBlocks"/>.</summary>
     private static readonly HashSet<string> QualifiedBlocks = new(AllBlocks.Select(Qualified), StringComparer.Ordinal);
@@ -27,6 +30,9 @@ internal static class ItemIds
     {
         [Belt] = "belt",
         [Inserter] = "inserter",
+        [FilterCommon] = "filter-common",
+        [FilterComplete] = "filter-complete",
+        [Splitter] = "splitter",
     };
 
     public static string Qualified(string id) => BigCraftableTypePrefix + id;
@@ -43,10 +49,10 @@ internal static class ItemIds
         return item is SObject obj && obj.bigCraftable.Value && IsOurBigCraftable(obj.QualifiedItemId);
     }
 
-    /// <summary>True se o bloco (ID não qualificado) tem direção e pode ser girado.</summary>
+    /// <summary>True se o bloco (ID não qualificado) tem direção e pode ser girado. O Divisor não tem.</summary>
     public static bool IsDirectional(string itemId)
     {
-        return itemId is Belt or Inserter;
+        return itemId is Belt or Inserter or FilterCommon or FilterComplete;
     }
 
     /// <summary>Chave do item no i18n, ex.: "belt".</summary>

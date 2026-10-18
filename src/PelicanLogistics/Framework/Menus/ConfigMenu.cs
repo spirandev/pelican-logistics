@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
@@ -9,14 +10,14 @@ using StardewValley.Menus;
 namespace PelicanLogistics.Framework.Menus;
 
 /// <summary>
-/// Interface base de configuração dos blocos: caixa centralizada com o título no topo, linhas
-/// (<see cref="ConfigRow"/>) empilhadas e um botão OK. Fecha também com Esc ou a tecla de menu.
-/// Cada linha grava a alteração na hora, pelo seu próprio callback.
+/// Interface base de configuração dos blocos: caixa centralizada com o título e o botão OK no topo e as linhas
+/// (<see cref="ConfigRow"/>) empilhadas. Fecha também com Esc ou a tecla de menu. Cada linha grava a alteração
+/// na hora, pelo seu próprio callback.
 /// </summary>
 internal class ConfigMenu : IClickableMenu
 {
     private const int MenuWidth = 720;
-    private const int Padding = 40;
+    private const int Padding = 32;
     private const int TitleHeight = 72;
     private const int RowSpacing = 8;
     private const int OkSize = 64;
@@ -29,7 +30,7 @@ internal class ConfigMenu : IClickableMenu
     private readonly ClickableTextureComponent okButton;
 
     public ConfigMenu(string title, string okText, IReadOnlyList<ConfigRow> rows)
-        : base(0, 0, MenuWidth, ComputeHeight(rows))
+        : base(0, 0, ComputeWidth(rows), ComputeHeight(rows, ComputeWidth(rows)))
     {
         this.title = title;
         this.rows = rows;
@@ -52,11 +53,9 @@ internal class ConfigMenu : IClickableMenu
             return;
         }
 
+        // Todas as linhas recebem o clique: um campo de texto precisa saber quando o clique foi fora dele.
         foreach (ConfigRow row in this.rows)
-        {
-            if (row.ReceiveLeftClick(x, y))
-                return;
-        }
+            row.ReceiveLeftClick(x, y);
     }
 
     public override void receiveKeyPress(Keys key)
@@ -85,6 +84,19 @@ internal class ConfigMenu : IClickableMenu
             row.PerformHoverAction(x, y);
     }
 
+    public override void update(GameTime time)
+    {
+        base.update(time);
+        foreach (ConfigRow row in this.rows)
+            row.Update();
+    }
+
+    public override void emergencyShutDown()
+    {
+        base.emergencyShutDown();
+        this.CloseRows();
+    }
+
     public override void gameWindowSizeChanged(Rectangle oldBounds, Rectangle newBounds)
     {
         base.gameWindowSizeChanged(oldBounds, newBounds);
@@ -104,20 +116,45 @@ internal class ConfigMenu : IClickableMenu
             row.Draw(b);
 
         this.okButton.draw(b);
+        foreach (ConfigRow row in this.rows)
+            row.DrawTooltip(b);
         this.drawMouse(b);
     }
 
-    private static int ComputeHeight(IReadOnlyList<ConfigRow> rows)
+    protected override void cleanupBeforeExit()
     {
-        return Padding + TitleHeight + rows.Sum(r => r.Height + RowSpacing) + OkSize + Padding;
+        base.cleanupBeforeExit();
+        this.CloseRows();
     }
 
-    /// <summary>Centraliza a caixa e posiciona as linhas e o botão OK.</summary>
+    private void CloseRows()
+    {
+        foreach (ConfigRow row in this.rows)
+            row.OnClose();
+    }
+
+    private static int ComputeWidth(IReadOnlyList<ConfigRow> rows)
+    {
+        return Math.Max(MenuWidth, rows.Select(r => r.MinWidth).DefaultIfEmpty(0).Max() + (Padding * 2));
+    }
+
+    private static int ComputeHeight(IReadOnlyList<ConfigRow> rows, int menuWidth)
+    {
+        foreach (ConfigRow row in rows)
+            row.Measure(menuWidth - (Padding * 2));
+
+        return Padding + TitleHeight + rows.Sum(r => r.Height + RowSpacing) - RowSpacing + Padding;
+    }
+
+    /// <summary>
+    /// Centraliza a caixa e posiciona as linhas e o botão OK (no canto de cima, na altura do título). Se a caixa não
+    /// couber na tela, ela fica encostada no topo, para o título e o OK continuarem visíveis.
+    /// </summary>
     private void Layout()
     {
         Vector2 topLeft = Utility.getTopLeftPositionForCenteringOnScreen(this.width, this.height);
         this.xPositionOnScreen = (int)topLeft.X;
-        this.yPositionOnScreen = (int)topLeft.Y;
+        this.yPositionOnScreen = Math.Max(0, (int)topLeft.Y);
 
         int y = this.yPositionOnScreen + Padding + TitleHeight;
         foreach (ConfigRow row in this.rows)
@@ -128,7 +165,7 @@ internal class ConfigMenu : IClickableMenu
 
         this.okButton.bounds = new Rectangle(
             this.xPositionOnScreen + this.width - Padding - OkSize,
-            this.yPositionOnScreen + this.height - Padding - OkSize,
+            this.yPositionOnScreen + Padding - 8,
             OkSize,
             OkSize);
     }
