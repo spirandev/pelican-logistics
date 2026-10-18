@@ -12,7 +12,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
 | 4: Persistência | Concluída | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | Compila contra o jogo; salvar/carregar não testado no jogo (ver pendências) |
 | 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
-| 6: Itens restantes | Aguardando teste local | `fase-6-itens-restantes` | (a preencher) | Compila contra o jogo; não testado no jogo |
+| 6: Itens restantes | Aguardando teste local | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | Compila contra o jogo; não testado no jogo |
 | 7: Dicas e alpha | Não iniciada | | | |
 
 A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7.
