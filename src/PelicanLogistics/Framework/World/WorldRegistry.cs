@@ -43,19 +43,41 @@ internal sealed class WorldRegistry
     }
 
     /// <summary>
-    /// Recria todos os nós a partir dos objetos dos locais (ao carregar o save). Antes, troca os Extratores
-    /// antigos por Inseridores (<see cref="LegacyMigration"/>).
+    /// O local da chave, mesmo sem blocos (ex.: só slots virtuais restaurados ao carregar), ou null se ele não
+    /// existe mais. O local encontrado passa a ser conhecido (<see cref="TryGetLocation"/>), para a grade dele rodar.
     /// </summary>
+    public GameLocation? FindLocation(string key)
+    {
+        if (this.locations.TryGetValue(key, out GameLocation? known))
+            return known;
+
+        GameLocation? found = null;
+        Utility.ForEachLocation(
+            location =>
+            {
+                if (KeyOf(location) != key)
+                    return true;
+
+                found = location;
+                return false;
+            },
+            true,   // includeInteriors
+            false); // includeGenerated
+
+        if (found != null)
+            this.locations[key] = found;
+        return found;
+    }
+
+    /// <summary>Recria todos os nós a partir dos objetos dos locais (ao carregar o save).</summary>
     public void Rebuild()
     {
         this.Clear();
 
         int count = 0;
-        int migrated = 0;
         Utility.ForEachLocation(
             location =>
             {
-                migrated += LegacyMigration.MigrateExtractors(location);
                 foreach (KeyValuePair<Vector2, SObject> pair in location.objects.Pairs)
                 {
                     if (this.TryAddNode(location, pair.Key, pair.Value))
@@ -67,8 +89,6 @@ internal sealed class WorldRegistry
             true,   // includeInteriors: interiores de construções (celeiros, galpões, estufa...)
             false); // includeGenerated: minas e outros níveis temporários não guardam objetos
 
-        if (migrated > 0)
-            this.monitor.Log($"{migrated} Extrator(es) da versão anterior trocado(s) por Inseridor(es), na mesma direção.", LogLevel.Info);
         this.monitor.Log($"{count} bloco(s) registrado(s) em {this.locations.Count} local(is).", LogLevel.Trace);
     }
 
@@ -95,8 +115,8 @@ internal sealed class WorldRegistry
 
         foreach ((Vector2 tile, SObject obj) in e.Added)
         {
-            // Tile que já tem nó: o aviso é de uma troca feita pelo próprio mod (migração do Extrator), que o SMAPI
-            // só informa no tick seguinte. Um bloco quebrado e colocado de novo gera Removed antes, então não cai aqui.
+            // Tile que já tem nó: proteção contra um aviso atrasado de um objeto já registrado (o SMAPI só informa
+            // no tick seguinte). Um bloco quebrado e colocado de novo gera Removed antes, então não cai aqui.
             if (!ItemIds.IsOurBlock(obj) || this.GetNode(location, ToTilePos(tile)) != null)
                 continue;
 
@@ -192,13 +212,26 @@ internal sealed class WorldRegistry
     }
 
     /// <summary>Solta os itens no chão, no centro do tile.</summary>
-    private static void DropItems(GameLocation location, Vector2 tile, IEnumerable<ILogisticsItem> items)
+    public static void DropItems(GameLocation location, Vector2 tile, IEnumerable<ILogisticsItem> items)
     {
-        Vector2 pixel = new(tile.X * Game1.tileSize + (Game1.tileSize / 2), tile.Y * Game1.tileSize + (Game1.tileSize / 2));
+        var gameItems = new List<Item>();
         foreach (ILogisticsItem item in items)
         {
-            if (item is GameItem gameItem && gameItem.Count > 0)
-                Game1.createItemDebris(gameItem.Item, pixel, -1, location);
+            if (item is GameItem gameItem)
+                gameItems.Add(gameItem.Item);
+        }
+
+        DropItems(location, tile, gameItems);
+    }
+
+    /// <summary>Solta os itens do jogo no chão, no centro do tile. Pilhas vazias são ignoradas.</summary>
+    public static void DropItems(GameLocation location, Vector2 tile, IEnumerable<Item> items)
+    {
+        Vector2 pixel = new(tile.X * Game1.tileSize + (Game1.tileSize / 2), tile.Y * Game1.tileSize + (Game1.tileSize / 2));
+        foreach (Item item in items)
+        {
+            if (item.Stack > 0)
+                Game1.createItemDebris(item, pixel, -1, location);
         }
     }
 }

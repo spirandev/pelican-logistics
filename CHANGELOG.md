@@ -32,10 +32,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Core: `ArmMath` (ângulo do braço e posição da mão) e consultas sem efeito colateral do baú (`Find`, `SpaceFor`).
 - Mod: desenho do braço, da mão e do item na mão do Inseridor; interface do Inseridor com "Retirar de" e "Colocar em".
 - Mod: `pl_dump` e `pl_inspect` mostram a mão, a última entrada e as entradas do Inseridor.
+- Core: `RuntimeStateSerializer` exporta e importa o estado em tempo de execução (itens em trânsito, mão, volta do braço e última entrada do Inseridor, slots virtuais); itens sem destino viram órfãos.
+- Mod: itens nas esteiras, na mão dos Inseridores e nos slots virtuais sobrevivem ao salvar e carregar (`SaveManager`: estado em JSON e itens num inventário global do jogo). Itens órfãos caem no chão, com aviso no log.
 
 ### Alterado
 - Extrator e Inseridor unificados no Inseridor (README "Inseridores"): ele pega atrás (baú, máquina ou esteira) e entrega na frente. O placeholder passa a ser um quadrado azul com um triângulo na borda do destino.
-- Saves das Fases 1 e 2: os Extratores colocados no mapa são trocados por Inseridores ao carregar, na mesma direção e com o mesmo "Retirar de".
 
 ### Removido
-- Extrator (bloco, interface e `ExtractorNode`). Extratores guardados em baús ou no inventário viram itens de erro do jogo.
+- Extrator (bloco, interface e `ExtractorNode`). Extratores de saves das Fases 1 e 2 viram itens de erro do jogo.

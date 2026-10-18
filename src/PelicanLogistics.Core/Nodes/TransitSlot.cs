@@ -31,6 +31,18 @@ public sealed class TransitSlot
         this.Blocked = false;
     }
 
+    /// <summary>
+    /// Restaura uma pilha salva (persistência), com o progresso limitado a 0..<see cref="Balance.End"/>. Só fica
+    /// bloqueada se estiver no fim.
+    /// </summary>
+    internal void Restore(ILogisticsItem item, int progress, Direction entrySide, bool blocked)
+    {
+        this.Item = item ?? throw new ArgumentNullException(nameof(item));
+        this.Progress = Math.Clamp(progress, 0, Balance.End);
+        this.EntrySide = entrySide;
+        this.Blocked = blocked && this.Progress == Balance.End;
+    }
+
     /// <summary>Esvazia o espaço e devolve a pilha que estava nele.</summary>
     public ILogisticsItem? Clear()
     {

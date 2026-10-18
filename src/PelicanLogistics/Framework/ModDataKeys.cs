@@ -16,7 +16,4 @@ internal static class ModDataKeys
 
     /// <summary>Chaves de configuração (tudo menos a direção), apagadas quando o bloco é colocado.</summary>
     public static readonly string[] Config = { PickupSource, InserterSlotMode };
-
-    /// <summary>"Retirar de" do Extrator das Fases 1 e 2. Lido só na migração para <see cref="PickupSource"/>.</summary>
-    public const string LegacyExtractorSource = Prefix + "ExtractorSource";
 }
