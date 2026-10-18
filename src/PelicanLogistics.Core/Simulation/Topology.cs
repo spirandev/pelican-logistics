@@ -62,10 +62,10 @@ public static class Topology
     }
 
     /// <summary>
-    /// Portas de um Divisor (plano mestre D4), em ordem horária N → E → S → W. Só esteiras e filtros se conectam:
-    /// entrada se o vizinho entrega no Divisor; saída se o vizinho recebe pelo lado virado para o Divisor (uma
-    /// esteira com o Divisor atrás, ou sem nada atrás e com o Divisor na lateral, que vira curva). Divisor e
-    /// Inseridor vizinhos não se conectam.
+    /// Portas de um Divisor (plano mestre D4), em ordem horária N → E → S → W. Entrada se o vizinho (esteira, filtro
+    /// ou Inseridor) entrega no Divisor; saída se o vizinho recebe pelo lado virado para o Divisor (uma esteira com o
+    /// Divisor atrás, ou sem nada atrás e com o Divisor na lateral, que vira curva; um filtro ou Inseridor com a
+    /// traseira virada para ele). Dois Divisores encostados não se conectam, nem um Inseridor com o Divisor na lateral.
     /// </summary>
     private static void ComputeSplitterPorts(LogisticsGrid grid, SplitterNode splitter)
     {
@@ -78,6 +78,7 @@ public static class Topology
             {
                 BeltNode belt => belt.InputSide,
                 FilterNode filter => filter.InputSide,
+                InserterNode inserter => inserter.Facing.Opposite(),
                 _ => null,
             };
 

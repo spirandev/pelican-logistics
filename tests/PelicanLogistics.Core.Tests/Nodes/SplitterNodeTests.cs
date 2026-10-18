@@ -77,19 +77,20 @@ public class SplitterNodeTests
     }
 
     [Fact]
-    public void Ports_SplitterAndInserterNeighbors_DoNotConnect()
+    public void Ports_InserterPointingAtIsInput_InserterWithBackToItIsOutput_SideInserterAndSplitterAreNothing()
     {
         var g = new GridBuilder()
             .Splitter(5, 5)
-            .Splitter(4, 5)                       // Divisor vizinho
-            .Inserter(6, 5, Direction.East)       // Inseridor com o Divisor atrás
-            .Inserter(5, 4, Direction.East)       // Inseridor com o Divisor na lateral (sul)
-            .Inserter(5, 6, Direction.North);     // Inseridor apontando para o Divisor
+            .Splitter(4, 5)                       // oeste: Divisor vizinho → nada
+            .Inserter(6, 5, Direction.East)       // leste: traseira virada para o Divisor → saída
+            .Inserter(5, 4, Direction.East)       // norte: Divisor na lateral do Inseridor → nada
+            .Inserter(5, 6, Direction.North);     // sul: aponta para o Divisor → entrada
 
         Topology.Recompute(g.Grid);
 
-        Assert.Empty(g.SplitterAt(5, 5).Inputs);
-        Assert.Empty(g.SplitterAt(5, 5).Outputs);
+        Assert.Equal(new[] { Direction.South }, g.SplitterAt(5, 5).Inputs);
+        Assert.Equal(new[] { Direction.East }, g.SplitterAt(5, 5).Outputs);
+        Assert.Empty(g.SplitterAt(4, 5).Inputs);
         Assert.Empty(g.SplitterAt(4, 5).Outputs);
         Assert.Equal(new[] { Direction.West }, g.InserterAt(5, 4).Inputs);
     }
@@ -97,11 +98,14 @@ public class SplitterNodeTests
     [Fact]
     public void Splitter_IsNeverPushedInto_ItPulls()
     {
-        var g = new GridBuilder().Splitter(5, 5);
+        var g = new GridBuilder().Splitter(5, 5).Belt(4, 5, Direction.East);
+        Topology.Recompute(g.Grid);
         var ctx = new TickContext(g.Grid, g.Endpoints);
 
+        // Aceitaria puxar pela entrada (oeste), mas nunca recebe empurrado; por um lado que não é entrada, nem isso.
         Assert.Equal(0, g.SplitterAt(5, 5).Accept(Direction.West, new FakeItem(Wood, 1), ctx));
-        Assert.False(g.SplitterAt(5, 5).CanAccept(Direction.West, new FakeItem(Wood, 1)));
+        Assert.True(g.SplitterAt(5, 5).CanAccept(Direction.West, new FakeItem(Wood, 1)));
+        Assert.False(g.SplitterAt(5, 5).CanAccept(Direction.North, new FakeItem(Wood, 1)));
     }
 
     [Fact]
@@ -421,5 +425,154 @@ public class SplitterNodeTests
         RemovalResult result = g.Grid.Remove(new TilePos(5, 5));
 
         Assert.Same(wood, Assert.Single(result.Items));
+    }
+
+    // Inseridores como portas.
+
+    [Fact]
+    public void InserterOutput_ChestToInserterToBeltToSplitterToInserterToFurnace_ProducesBars()
+    {
+        // Baú → Inseridor → esteira → Divisor → Inseridor (Automático) → fornalha → Inseridor (Produto) → baú.
+        // Como numa esteira só, o carvão precisa vir entre os minérios: 6 minérios seguidos travariam a linha.
+        var source = new FakeChest(
+            36,
+            new FakeItem(FakeMachine.Ids.CopperOre, 5),
+            new FakeItem(FakeMachine.Ids.Coal, 1),
+            new FakeItem(FakeMachine.Ids.CopperOre, 5),
+            new FakeItem(FakeMachine.Ids.Coal, 1));
+        var bars = new FakeChest();
+        var furnace = FakeMachine.Furnace(processingTicks: 300);
+        var g = new GridBuilder()
+            .Chest(0, 5, source)
+            .Inserter(1, 5, Direction.East)
+            .Belt(2, 5, Direction.East)
+            .Splitter(3, 5)
+            .Inserter(4, 5, Direction.East, InserterSlotMode.Auto)
+            .Machine(5, 5, furnace)
+            .Inserter(5, 6, Direction.South, PickupSource.Product)
+            .Chest(5, 7, bars);
+
+        g.Run(5000);
+
+        Assert.Equal(new[] { Direction.East }, g.SplitterAt(3, 5).Outputs);
+        Assert.Equal(2, furnace.Starts.Count);
+        Assert.Equal(2, bars.CountById(FakeMachine.Ids.CopperBar));
+        Assert.Equal(0, source.CountTotal());
+        Assert.Equal(0, g.CountInTransit());
+    }
+
+    [Fact]
+    public void InserterOutput_ChestToInserterToFilterToSplitterToInserterToFurnace_OnlyOreEntersTheFurnace()
+    {
+        var source = new FakeChest(36, new FakeItem(Wood, 3), new FakeItem(FakeMachine.Ids.CopperOre, 5));
+        var furnace = FakeMachine.Furnace();
+        var g = new GridBuilder()
+            .Chest(0, 5, source)
+            .Inserter(1, 5, Direction.East)
+            .Filter(2, 5, Direction.East, FakeMachine.Ids.CopperOre)
+            .Splitter(3, 5)
+            .Inserter(4, 5, Direction.East)
+            .Machine(5, 5, furnace);
+
+        g.Run(2000);
+
+        Assert.Equal(5, g.SlotsAt(5, 5)!.Main!.Count);
+        Assert.Equal(3, source.CountById(Wood));
+        Assert.Equal(0, g.CountInTransit());
+    }
+
+    [Fact]
+    public void InserterOutput_TakesOnlyItsTierAmount_RestStaysInTheSplitter_ThenGoesOut()
+    {
+        // A esteira de entrada traz uma pilha de 3; o Inseridor da saída leva 1 por ciclo.
+        var target = new FakeChest();
+        var g = new GridBuilder()
+            .Belt(4, 5, Direction.East)
+            .Splitter(5, 5)
+            .Inserter(6, 5, Direction.East)
+            .Chest(7, 5, target);
+        Feed(g, new FakeItem(Wood, 3));
+
+        g.Run(PassTicks);
+        Assert.Equal(2, g.SplitterAt(5, 5).Slot.Item!.Count);
+        Assert.True(g.SplitterAt(5, 5).Slot.Blocked);
+        Assert.Equal(1, g.InserterAt(6, 5).Hand.Item!.Count);
+        Assert.Equal(Direction.West, g.InserterAt(6, 5).Hand.EntrySide);
+
+        g.Run(200);
+        Assert.Equal(3, target.CountById(Wood));
+        Assert.True(g.SplitterAt(5, 5).Slot.IsEmpty);
+    }
+
+    [Fact]
+    public void InserterOutput_DestinationRefusesTheItem_InserterIsNotACandidate()
+    {
+        // O Inseridor de saída abastece uma fornalha, que não aceita madeira: a madeira vai para a esteira.
+        var furnace = FakeMachine.Furnace();
+        var g = new GridBuilder()
+            .Belt(4, 5, Direction.East)
+            .Splitter(5, 5)
+            .Inserter(5, 4, Direction.North)
+            .Machine(5, 3, furnace)
+            .Belt(6, 5, Direction.East);
+        Feed(g, new FakeItem(Wood, 2));
+
+        g.Run(PassTicks);
+
+        Assert.True(g.InserterAt(5, 4).Hand.IsEmpty);
+        Assert.Equal(2, g.BeltAt(6, 5).Slot.Item!.Count);
+    }
+
+    [Fact]
+    public void InserterInputAndOutputs_ChestToChests_Alternate_NothingLostOrCreated()
+    {
+        // Baú → Inseridor → Divisor → Inseridores ao norte e ao sul → baús.
+        var source = new FakeChest(36, new FakeItem(Wood, 6));
+        var north = new FakeChest();
+        var south = new FakeChest();
+        var g = new GridBuilder()
+            .Chest(3, 5, source)
+            .Inserter(4, 5, Direction.East)
+            .Splitter(5, 5)
+            .Inserter(5, 4, Direction.North)
+            .Chest(5, 3, north)
+            .Inserter(5, 6, Direction.South)
+            .Chest(5, 7, south);
+
+        int total = source.CountTotal();
+        for (int tick = 0; tick < 1000; tick++)
+        {
+            g.Run(1);
+            Assert.Equal(total, source.CountTotal() + g.CountInTransit() + north.CountTotal() + south.CountTotal());
+        }
+
+        Assert.Equal(new[] { Direction.West }, g.SplitterAt(5, 5).Inputs);
+        Assert.Equal(new[] { Direction.North, Direction.South }, g.SplitterAt(5, 5).Outputs);
+        Assert.Equal(3, north.CountById(Wood));
+        Assert.Equal(3, south.CountById(Wood));
+    }
+
+    [Fact]
+    public void InserterInput_SplitterPullsFromTheHand_ThenTheArmReturnsEmpty()
+    {
+        // Sem saídas: o Divisor fica com o primeiro item, e o Inseridor não pega outro enquanto ele está ocupado.
+        var source = new FakeChest(36, new FakeItem(Wood, 5));
+        var g = new GridBuilder()
+            .Chest(3, 5, source)
+            .Inserter(4, 5, Direction.East)
+            .Splitter(5, 5);
+        int travel = Balance.End / Balance.InserterSpeed;
+
+        // Pega no tick 1, chega no fim no tick 1 + 15 e o Divisor puxa no tick seguinte.
+        g.Run(1 + travel + 1);
+        Assert.Equal(1, g.SplitterAt(5, 5).Slot.Item!.Count);
+        Assert.True(g.InserterAt(4, 5).Hand.IsEmpty);
+        Assert.Equal(Balance.InserterReturnTicks, g.InserterAt(4, 5).Cooldown);
+
+        g.Run(200);
+        Assert.Equal(1, g.SplitterAt(5, 5).Slot.Item!.Count);
+        Assert.True(g.SplitterAt(5, 5).Slot.Blocked);
+        Assert.True(g.InserterAt(4, 5).Hand.IsEmpty);
+        Assert.Equal(4, source.CountById(Wood));
     }
 }

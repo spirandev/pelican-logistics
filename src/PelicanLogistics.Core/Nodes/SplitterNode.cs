@@ -8,8 +8,9 @@ using PelicanLogistics.Core.Simulation;
 namespace PelicanLogistics.Core.Nodes;
 
 /// <summary>
-/// Divisor (README "Divisor"): bloco sem direção com 4 portas. Cada esteira (ou filtro) que aponta para ele é uma
-/// entrada, e cada uma que sai dele é uma saída (portas calculadas pela <see cref="Topology"/>, plano mestre D4).
+/// Divisor (README "Divisor"): bloco sem direção com 4 portas. Cada esteira, filtro ou Inseridor que aponta para ele
+/// é uma entrada, e cada esteira ou filtro que sai dele, ou Inseridor com a traseira virada para ele, é uma saída
+/// (portas calculadas pela <see cref="Topology"/>, plano mestre D4).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,6 +22,11 @@ namespace PelicanLogistics.Core.Nodes;
 /// <para>
 /// O rodízio de entradas e de saídas segue a ordem horária começando pelo norte e continua depois da última porta
 /// usada. Segura uma pilha por vez e nunca junta itens.
+/// </para>
+/// <para>
+/// Inseridores como portas: o Divisor puxa o item da mão de um Inseridor de entrada, e entrega na mão de um Inseridor
+/// de saída só o que ele pegaria agora (braço parado, quantidade do tier, o que o destino dele aceita). O que o
+/// Inseridor não pegou fica no Divisor e é distribuído de novo no próximo tick.
 /// </para>
 /// </remarks>
 public sealed class SplitterNode : LogisticsNode
@@ -42,10 +48,10 @@ public sealed class SplitterNode : LogisticsNode
     /// <summary>Última saída usada no rodízio. Null = nunca entregou (o rodízio começa pelo norte).</summary>
     public Direction? LastOutput { get; internal set; }
 
-    /// <summary>Lados com uma esteira ou filtro apontando para o Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
+    /// <summary>Lados com uma esteira, filtro ou Inseridor apontando para o Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
     public IReadOnlyList<Direction> Inputs { get; internal set; } = Array.Empty<Direction>();
 
-    /// <summary>Lados com uma esteira ou filtro que recebe do Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
+    /// <summary>Lados com uma esteira, filtro ou Inseridor que recebe do Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
     public IReadOnlyList<Direction> Outputs { get; internal set; } = Array.Empty<Direction>();
 
     public override IEnumerable<TransitSlot> Slots => new[] { this.Slot };
@@ -54,6 +60,15 @@ public sealed class SplitterNode : LogisticsNode
     public override bool ProvidesTo(TilePos neighbor)
     {
         return this.Position.DirectionTo(neighbor) != null;
+    }
+
+    /// <summary>
+    /// True se o Divisor puxaria agora um item desse lado: é uma entrada e ele está vazio. Usado pelo Inseridor de
+    /// entrada para saber se pode pegar; o Divisor nunca recebe empurrado (<see cref="LogisticsNode.Accept"/> = 0).
+    /// </summary>
+    public override bool CanAccept(Direction entrySide, ILogisticsItem item)
+    {
+        return this.Slot.IsEmpty && this.Inputs.Contains(entrySide);
     }
 
     public override IEnumerable<LogisticsNode> Downstream(LogisticsGrid grid)
@@ -107,49 +122,66 @@ public sealed class SplitterNode : LogisticsNode
         }
     }
 
-    /// <summary>Regras 1 a 5: escolhe as saídas e divide a pilha igualmente entre elas.</summary>
+    /// <summary>
+    /// Regras 1 a 5: escolhe as saídas e divide a pilha igualmente entre elas. O que uma saída não recebeu (um
+    /// Inseridor pega só a quantidade do tier) fica no Divisor, bloqueado, e é distribuído de novo no próximo tick.
+    /// </summary>
     private void Distribute(TickContext ctx)
     {
         ILogisticsItem item = this.Slot.Item!;
         List<(Direction Side, LogisticsNode Node)> candidates = this.ChooseOutputs(ctx, item);
-        if (candidates.Count == 0)
+        int k = Math.Min(candidates.Count, item.Count);
+        if (k == 0)
         {
             this.Slot.Blocked = true;
             return;
         }
 
-        int k = Math.Min(candidates.Count, item.Count);
         int share = item.Count / k;
         int remainder = item.Count % k;
         for (int i = 0; i < k; i++)
         {
             (Direction side, LogisticsNode node) = candidates[i];
-            if (i == k - 1)
+            int amount = Math.Min(item.Count, share + (i < remainder ? 1 : 0));
+
+            // A pilha inteira vai como a própria instância; uma parte, separada dela.
+            bool whole = amount == item.Count;
+            ILogisticsItem part = whole ? item : item.Split(amount);
+            int taken = Give(node, side, part, ctx);
+            if (taken > 0)
+                this.LastOutput = side;
+
+            if (whole)
             {
-                // A última saída recebe a própria pilha, com o que sobrou.
-                int count = item.Count;
-                if (node.Accept(side.Opposite(), item, ctx) == count)
+                if (taken == amount)
+                {
                     this.Slot.Clear();
-                else
-                    this.Slot.Blocked = true;
-            }
-            else
-            {
-                ILogisticsItem part = item.Split(share + (i < remainder ? 1 : 0));
-                int count = part.Count;
+                    return;
+                }
 
-                // Não deveria acontecer (a saída estava livre): o que não entrou volta para a pilha.
-                if (node.Accept(side.Opposite(), part, ctx) < count)
-                    item.MergeFrom(part, part.Count);
+                break;
             }
 
-            this.LastOutput = side;
+            // O que não entrou volta para a pilha.
+            if (taken < amount)
+                item.MergeFrom(part, part.Count);
         }
+
+        this.Slot.Blocked = true;
+    }
+
+    /// <summary>Entrega numa saída: empurra numa esteira ou filtro; na mão de um Inseridor, só o que ele pegaria.</summary>
+    private static int Give(LogisticsNode node, Direction side, ILogisticsItem part, TickContext ctx)
+    {
+        return node is InserterNode inserter
+            ? inserter.Offer(side.Opposite(), part, ctx)
+            : node.Accept(side.Opposite(), part, ctx);
     }
 
     /// <summary>
     /// Saídas livres que recebem o item, em ordem horária depois de <see cref="LastOutput"/>: as com filtro que
-    /// aceita o item; se nenhuma estiver livre, as sem filtro. Uma saída com filtro que não aceita nunca é candidata.
+    /// aceita o item; se nenhuma estiver livre, as sem filtro (esteiras e Inseridores que pegariam o item agora). Uma
+    /// saída com filtro que não aceita nunca é candidata.
     /// </summary>
     private List<(Direction Side, LogisticsNode Node)> ChooseOutputs(TickContext ctx, ILogisticsItem item)
     {
@@ -160,7 +192,10 @@ public sealed class SplitterNode : LogisticsNode
             if (!this.Outputs.Contains(side) || ctx.NodeAt(this.Position.Offset(side)) is not { } node)
                 continue;
 
-            if (!node.CanAccept(side.Opposite(), item))
+            bool free = node is InserterNode inserter
+                ? inserter.AmountToTake(side.Opposite(), item, ctx) > 0
+                : node.CanAccept(side.Opposite(), item);
+            if (!free)
                 continue;
 
             if (node is FilterNode)

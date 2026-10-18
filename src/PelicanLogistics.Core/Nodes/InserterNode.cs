@@ -9,8 +9,9 @@ using PelicanLogistics.Core.Simulation;
 namespace PelicanLogistics.Core.Nodes;
 
 /// <summary>
-/// Inseridor (README "Inseridores"): pega atrás (baú, máquina ou esteira que termina nele) ou de uma esteira
-/// que termina nele pela lateral, e entrega na frente (baú, máquina ou esteira que começa nele).
+/// Inseridor (README "Inseridores"): pega atrás (baú, máquina, esteira ou filtro que termina nele, ou um Divisor)
+/// ou de uma esteira que termina nele pela lateral, e entrega na frente (baú, máquina, esteira ou filtro que começa
+/// nele, ou um Divisor).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,6 +27,9 @@ namespace PelicanLogistics.Core.Nodes;
 public sealed class InserterNode : LogisticsNode
 {
     private int configuredAmount = 1;
+
+    /// <summary>True se a mão tinha um item no fim do último tick (para saber se um Divisor puxou o item da mão).</summary>
+    private bool carrying;
 
     public InserterNode(TilePos position, Direction facing, TransferTier tier = TransferTier.Single)
         : base(position, facing)
@@ -86,8 +90,59 @@ public sealed class InserterNode : LogisticsNode
         return front == null ? Array.Empty<LogisticsNode>() : new[] { front };
     }
 
+    /// <summary>A mão, quando o destino (um Divisor) puxa o item dela. Inseridores encostados não puxam um do outro.</summary>
+    public override TransitSlot? GetOutgoingSlot(TilePos target)
+    {
+        return target == this.FrontPosition && this.Hand.Item != null ? this.Hand : null;
+    }
+
     public override void Update(TickContext ctx)
     {
+        this.UpdateArm(ctx);
+        this.carrying = this.Hand.Item != null;
+    }
+
+    /// <summary>
+    /// Quantas unidades de 'item' o Inseridor pegaria agora pelo lado indicado (0 = não pega): braço parado e vazio,
+    /// o lado é uma entrada e o destino aceita o item. Usado pelo Divisor, que entrega a um Inseridor com a traseira
+    /// virada para ele. Sem efeito colateral.
+    /// </summary>
+    internal int AmountToTake(Direction side, ILogisticsItem item, TickContext ctx)
+    {
+        if (!this.Hand.IsEmpty || this.Cooldown > 0 || !this.IsInput(side))
+            return 0;
+
+        Target target = this.ResolveTarget(ctx);
+        if (!target.IsValid)
+            return 0;
+
+        return Math.Min(item.Count, Math.Min(this.TierAmount(item), this.Fits(item, target, ctx)));
+    }
+
+    /// <summary>
+    /// O Divisor entrega 'item' na mão, como se o Inseridor tivesse pegado dele: só o que <see cref="AmountToTake"/>
+    /// permite. Retorna quantas unidades entraram (contrato de <see cref="ILogisticsItem"/>).
+    /// </summary>
+    internal int Offer(Direction side, ILogisticsItem item, TickContext ctx)
+    {
+        int amount = this.AmountToTake(side, item, ctx);
+        if (amount <= 0)
+            return 0;
+
+        this.Hand.Put(amount < item.Count ? item.Split(amount) : item, side);
+        this.LastInput = side;
+        return amount;
+    }
+
+    private void UpdateArm(TickContext ctx)
+    {
+        // 0. Um Divisor na frente puxou o item da mão: o braço volta vazio.
+        if (this.carrying && this.Hand.Item == null)
+        {
+            this.Cooldown = Balance.InserterReturnTicks;
+            return;
+        }
+
         // 1. Carregando: a mão vai até o destino e entrega.
         if (this.Hand.Item != null)
         {
@@ -245,6 +300,10 @@ public sealed class InserterNode : LogisticsNode
 
     private ILogisticsItem? TakeFromNode(LogisticsNode neighbor, Target target, TickContext ctx)
     {
+        // Inseridores encostados não se conectam (README). Um Divisor atrás entrega pelo Offer, não é puxado.
+        if (neighbor is InserterNode)
+            return null;
+
         TransitSlot? slot = neighbor.GetOutgoingSlot(this.Position);
         if (slot?.Item == null || slot.Progress != Balance.End)
             return null;
@@ -407,10 +466,11 @@ public sealed class InserterNode : LogisticsNode
     private readonly record struct Target(LogisticsNode? Node, IEndpoint? Endpoint)
     {
         /// <summary>
-        /// Há algo que recebe: um nó que não é Inseridor nem Divisor (plano mestre D3), um baú ou uma máquina.
+        /// Há algo que recebe: um nó que não é Inseridor (plano mestre D3), um baú ou uma máquina. Um Divisor na
+        /// frente recebe puxando o item da mão.
         /// </summary>
         public bool IsValid => this.Node != null
-            ? this.Node.Kind is not (NodeKind.Inserter or NodeKind.Splitter)
+            ? this.Node.Kind != NodeKind.Inserter
             : this.Endpoint is IChestEndpoint or IMachineEndpoint;
     }
 }
