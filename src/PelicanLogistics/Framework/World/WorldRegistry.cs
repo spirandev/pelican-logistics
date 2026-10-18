@@ -6,6 +6,7 @@ using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -108,7 +109,7 @@ internal sealed class WorldRegistry
         foreach ((Vector2 tile, SObject obj) in e.Removed)
         {
             if (ItemIds.IsOurBlock(obj))
-                this.RemoveNode(location, tile);
+                this.RemoveNode(location, tile, obj);
             else
                 this.RemoveMachineSlots(location, tile);
         }
@@ -122,8 +123,14 @@ internal sealed class WorldRegistry
 
             // Sempre a direção da seta e a configuração padrão: ao colocar, o jogo copia o modData do item
             // segurado (getOne), então um bloco recolhido e colocado de novo traria a direção e a configuração antigas.
-            NodeFactory.WriteFacing(obj, this.placementDirection());
+            Direction facing = this.placementDirection();
+            NodeFactory.WriteFacing(obj, facing);
             NodeFactory.ResetConfig(obj);
+
+            // A Esteira Subterrânea vira entrada ou saída conforme o que já está atrás dela.
+            if (obj.ItemId == ItemIds.UndergroundBelt)
+                NodeFactory.WriteUndergroundRole(obj, UndergroundPairing.DecideRole(this.World.GetOrCreate(KeyOf(location)), ToTilePos(tile), facing));
+
             this.TryAddNode(location, tile, obj);
         }
     }
@@ -137,6 +144,43 @@ internal sealed class WorldRegistry
     public VirtualSlots? GetMachineSlots(GameLocation location, TilePos pos)
     {
         return this.World.Get(KeyOf(location))?.MachineSlots.Get(pos);
+    }
+
+    /// <summary>O objeto do jogo no tile, ou null.</summary>
+    public static SObject? GetObject(GameLocation location, TilePos pos)
+    {
+        return location.objects.TryGetValue(ToVector(pos), out SObject? obj) ? obj : null;
+    }
+
+    /// <summary>
+    /// Coloca o acessório sobre o bloco (o Regulador com a regra padrão) e o grava no <c>modData</c>. Retorna false se
+    /// não há bloco, se ele já tem um acessório ou se o acessório não serve para ele (README "Acessórios").
+    /// </summary>
+    public bool TrySetAccessory(GameLocation location, TilePos pos, AccessoryKind kind)
+    {
+        LogisticsGrid? grid = this.World.Get(KeyOf(location));
+        SObject? obj = GetObject(location, pos);
+        if (grid == null || obj == null || !grid.TrySetAccessory(pos, kind))
+            return false;
+
+        NodeFactory.WriteAccessory(obj, kind, (grid.Get(pos) as InserterNode)?.Regulator);
+        return true;
+    }
+
+    /// <summary>Tira o acessório do bloco e do <c>modData</c>. Retorna o acessório removido (<see cref="AccessoryKind.None"/> se não havia).</summary>
+    public AccessoryKind RemoveAccessory(GameLocation location, TilePos pos)
+    {
+        AccessoryKind removed = this.World.Get(KeyOf(location))?.RemoveAccessory(pos) ?? AccessoryKind.None;
+        if (removed != AccessoryKind.None && GetObject(location, pos) is { } obj)
+            NodeFactory.ClearAccessory(obj);
+        return removed;
+    }
+
+    /// <summary>Grava no <c>modData</c> a regra do Regulador do Inseridor (depois de a interface alterá-la).</summary>
+    public void SaveRegulatorRule(GameLocation location, TilePos pos)
+    {
+        if (this.GetNode(location, pos) is InserterNode { Regulator: { } rule } && GetObject(location, pos) is { } obj)
+            NodeFactory.WriteRegulatorRule(obj, rule);
     }
 
     /// <summary>Gira o nó no sentido horário e grava a direção no <c>modData</c>. Retorna false se não há nó.</summary>
@@ -184,11 +228,29 @@ internal sealed class WorldRegistry
 
         this.locations[key] = location;
         grid.Add(node);
+        this.RestoreAccessory(location, tile, obj, grid, pos);
         return true;
     }
 
-    /// <summary>Remove o nó e solta no chão os itens que ele carregava.</summary>
-    private void RemoveNode(GameLocation location, Vector2 tile)
+    /// <summary>Coloca no nó recém-criado o acessório gravado no <c>modData</c> (ao carregar o save).</summary>
+    private void RestoreAccessory(GameLocation location, Vector2 tile, SObject obj, LogisticsGrid grid, TilePos pos)
+    {
+        AccessoryKind kind = NodeFactory.ReadAccessory(obj);
+        if (kind == AccessoryKind.None)
+            return;
+
+        RegulatorRule? rule = kind == AccessoryKind.Regulator ? NodeFactory.ReadRegulatorRule(obj) : null;
+        if (grid.TrySetAccessory(pos, kind, rule))
+            return;
+
+        // Não deveria acontecer (o modData só é gravado quando a grade aceita o acessório): o acessório cai no chão.
+        this.monitor.Log($"Acessório {kind} inválido no bloco {obj.ItemId} em {KeyOf(location)} {pos}; ele foi solto no chão.", LogLevel.Warn);
+        NodeFactory.ClearAccessory(obj);
+        DropItems(location, tile, new[] { ItemIds.CreateAccessory(kind) });
+    }
+
+    /// <summary>Remove o nó e solta no chão os itens que ele carregava e o acessório (plano mestre D9).</summary>
+    private void RemoveNode(GameLocation location, Vector2 tile, SObject obj)
     {
         LogisticsGrid? grid = this.World.Get(KeyOf(location));
         if (grid == null)
@@ -196,8 +258,11 @@ internal sealed class WorldRegistry
 
         RemovalResult result = grid.Remove(ToTilePos(tile));
         DropItems(location, tile, result.Items);
+        if (result.Accessory != AccessoryKind.None)
+            DropItems(location, tile, new[] { ItemIds.CreateAccessory(result.Accessory) });
 
-        // Acessórios: Fase 5.
+        // O bloco recolhido não leva o acessório (que já caiu no chão) nem a regra.
+        NodeFactory.ClearAccessory(obj);
     }
 
     /// <summary>Máquina removida: os itens guardados nos slots virtuais caem no chão (README "Slots virtuais").</summary>

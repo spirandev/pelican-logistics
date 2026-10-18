@@ -17,6 +17,18 @@ internal static class ModDataKeys
     /// <summary>Regra do Filtro Comum ou do Filtro Completo, em JSON (<c>FilterRuleSerializer</c>).</summary>
     public const string FilterRule = Prefix + "FilterRule";
 
+    /// <summary>Quantidade por operação do Inseridor Configurável: número de 1 a 999.</summary>
+    public const string ConfiguredAmount = Prefix + "ConfiguredAmount";
+
+    /// <summary>Papel da Esteira Subterrânea, decidido ao colocar: "Entrance" | "Exit".</summary>
+    public const string UndergroundRole = Prefix + "UndergroundRole";
+
+    /// <summary>Acessório sobre o bloco: "Bridge" | "Regulator" (ausente = nenhum).</summary>
+    public const string Accessory = Prefix + "Accessory";
+
+    /// <summary>Regra do Regulador, em JSON (<c>RegulatorRuleSerializer</c>).</summary>
+    public const string RegulatorRule = Prefix + "RegulatorRule";
+
     /// <summary>Chaves de configuração (tudo menos a direção), apagadas quando o bloco é colocado.</summary>
-    public static readonly string[] Config = { PickupSource, InserterSlotMode, FilterRule };
+    public static readonly string[] Config = { PickupSource, InserterSlotMode, FilterRule, ConfiguredAmount, UndergroundRole, Accessory, RegulatorRule };
 }
