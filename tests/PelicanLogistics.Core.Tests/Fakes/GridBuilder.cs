@@ -1,3 +1,4 @@
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
@@ -46,6 +47,24 @@ public sealed class GridBuilder
         return this;
     }
 
+    /// <summary>Filtro Comum que só deixa passar o item indicado.</summary>
+    public GridBuilder Filter(int x, int y, Direction facing, string qualifiedItemId)
+    {
+        return this.Filter(x, y, facing, new CommonFilterRule { QualifiedItemId = qualifiedItemId });
+    }
+
+    public GridBuilder Filter(int x, int y, Direction facing, IFilterRule rule)
+    {
+        this.Grid.Add(new FilterNode(new TilePos(x, y), facing, rule));
+        return this;
+    }
+
+    public GridBuilder Splitter(int x, int y)
+    {
+        this.Grid.Add(new SplitterNode(new TilePos(x, y)));
+        return this;
+    }
+
     public GridBuilder Machine(int x, int y, FakeMachine machine)
     {
         this.Endpoints.Endpoints[new TilePos(x, y)] = machine;
@@ -84,6 +103,10 @@ public sealed class GridBuilder
 
     public InserterNode InserterAt(int x, int y) => this.NodeAt<InserterNode>(x, y);
 
+    public FilterNode FilterAt(int x, int y) => this.NodeAt<FilterNode>(x, y);
+
+    public SplitterNode SplitterAt(int x, int y) => this.NodeAt<SplitterNode>(x, y);
+
     /// <summary>Slots virtuais da máquina no tile, ou null se não há nada guardado.</summary>
     public VirtualSlots? SlotsAt(int x, int y) => this.Grid.MachineSlots.Get(new TilePos(x, y));
 
@@ -93,7 +116,7 @@ public sealed class GridBuilder
         return Assert.IsType<T>(this.Grid.Get(new TilePos(x, y)));
     }
 
-    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós: esteiras e mãos dos Inseridores).</summary>
+    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós: esteiras, filtros, Divisores e mãos dos Inseridores).</summary>
     public int CountInTransit()
     {
         return this.Grid.Nodes.SelectMany(n => n.Slots).Where(s => s.Item != null).Sum(s => s.Item!.Count);
