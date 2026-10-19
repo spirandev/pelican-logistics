@@ -13,9 +13,10 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 4: Persistência | Concluída | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | Compila contra o jogo; salvar/carregar não testado no jogo (ver pendências) |
 | 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
 | 6: Itens restantes | Aguardando teste local | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | Compila contra o jogo; não testado no jogo |
+| 6b: Túneis | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
-A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7.
+A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7. A Fase 6b (Túneis) foi criada em 2026-10-19, antes do teste local da Fase 6, a pedido do usuário: a Esteira Subterrânea de vão fixo vira Túnel + Esteiras Subterrâneas por tile, com o Capacete de Engenheiro (README e plano mestre D18 a D21 já atualizados).
 
 ---
 

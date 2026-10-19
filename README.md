@@ -57,7 +57,35 @@ Os nomes abaixo são provisórios. Todos os itens são colocados no mapa, como b
 | **Esteira Rápida** | 2 | Igual à esteira, com velocidade maior. |
 | **Esteira Expressa** | 3 | A mais rápida. |
 | **Ponte** (Bridge) | 1 | Acessório exclusivo da esteira. Colocado sobre uma esteira existente, permite que o jogador passe por cima daquele tile, e a esteira continua funcionando por baixo. Deve ser barata. |
-| **Esteira Subterrânea** | 3 | Par entrada/saída que passa itens por baixo de até N tiles (cercas, caminhos, outras esteiras). |
+| **Túnel** | 3 | Bloco na superfície que leva os itens para baixo da terra (entrada) ou os traz de volta (saída). O mesmo item serve para as duas pontas. Ver [Túnel e Esteira Subterrânea](#túnel-e-esteira-subterrânea). |
+| **Esteira Subterrânea** | 3 | Esteira **embaixo da terra**, uma por tile, ligando a entrada à saída de um Túnel. Não ocupa o tile: dá para plantar, pôr caminho ou cerca por cima. |
+
+### Túnel e Esteira Subterrânea
+
+```
+[Túnel: entrada] → (subterrânea) (subterrânea) (subterrânea) → [Túnel: saída] → esteira
+                     plantação     caminho        cerca
+```
+
+- **Túnel:** bloco na superfície, com direção (gira com `R`). Colocado sem nada atrás, vira **entrada** (círculo branco); colocado na ponta de uma corrente de Esteiras Subterrâneas que aponta para ele, vira **saída** (círculo preto). O papel é decidido ao colocar e não muda depois. A entrada recebe só por trás (sem curva) e manda os itens para a Esteira Subterrânea à frente; a saída entrega à frente como uma esteira.
+- **Esteira Subterrânea:** gasta **1 item por tile** e fica numa camada própria, embaixo da terra. O tile continua livre para o jogo: plantações, caminhos, cercas, baús e até construções por cima não interferem. Não pode ficar na água nem em tiles que o mapa não permite (paredes, penhascos), nem embaixo de um Túnel.
+- **Como uma esteira:** uma pilha por tile, sentido único, faz **curva** sozinha (gira com `R` antes de colocar). Sem comprimento máximo: o custo de 1 item por tile já limita.
+- **Velocidade:** a do tier 2 (2 tiles/s), em toda a corrente e nas duas pontas do Túnel. Construir embaixo da terra é mais complexo, então não é tão rápido quanto a Expressa.
+- **Invisível:** os segmentos e os itens dentro deles só aparecem com o [Capacete de Engenheiro](#capacete-de-engenheiro).
+- **Colocar e retirar:** só com o Capacete de Engenheiro **na cabeça**. Segurando uma Esteira Subterrânea, o botão de ação coloca um segmento num tile vazio e retira um segmento existente. Com a mão livre, o botão de ação também retira um segmento, se não houver mais nada no tile com que o jogo interaja (objeto, móvel, plantação, árvore). Colocar um Túnel também exige o capacete na cabeça.
+- **Removido com itens dentro:** os itens caem no chão, no tile onde estavam.
+- A entrada do Túnel é destino válido do Inseridor e saída válida do Divisor; a saída é origem do Inseridor (por trás ou pela lateral) e entrada do Divisor.
+
+### Capacete de Engenheiro
+
+Chapéu do mod (ganha o próprio item; o jogo não tem um chapéu de mineração com lanterna). Com ele **na cabeça ou na mão**, o jogador vê o que fica escondido:
+
+- as Esteiras Subterrâneas e os itens passando dentro delas;
+- se um Túnel vai virar entrada ou saída, antes de colocar;
+- os **slots virtuais** das máquinas (ver [Slots virtuais](#slots-virtuais));
+- **descrições técnicas** dos itens do mod (ex.: a velocidade de cada esteira, a quantidade por operação do Inseridor).
+
+Com ele **na cabeça**, também pode **construir embaixo da terra**: colocar e retirar Esteiras Subterrâneas e colocar Túneis. Sem o capacete, essas informações nunca aparecem no jogo (os comandos de console, ferramentas de depuração, continuam mostrando tudo). O que já está visível na superfície (itens nas esteiras, quantidade ao passar o mouse) continua visível sem ele.
 
 ### Inseridores
 
@@ -257,7 +285,7 @@ Exemplo, uma fornalha com três inseridores:
 Como o Inseridor só pega o que o destino aceita, um único baú com minério e carvão misturados também funciona: `[Baú misto] → [Inseridor: Automático] → [Fornalha]`.
 
 **Decidido:**
-- **Dica ao passar o mouse:** em máquinas ligadas ao sistema, mostra o conteúdo dos slots:
+- **Dica ao passar o mouse:** em máquinas ligadas ao sistema, com o [Capacete de Engenheiro](#capacete-de-engenheiro) na cabeça ou na mão, mostra o conteúdo dos slots (sem o capacete, os slots nunca aparecem):
   ```
   Fornalha
   Principal: 3/5 Minério de cobre
@@ -328,7 +356,9 @@ Por que o Clint: ele é o ferreiro, o personagem mais "técnico" da cidade.
 |---|---|---|
 | Esteira / Rápida / Expressa | Cinza claro / médio / escuro | Quadrado com **1, 2 ou 3 setas** indicando sentido e velocidade |
 | Ponte | Marrom | Faixa horizontal sobre a esteira |
-| Esteira Subterrânea | Cinza escuro | Quadrado com círculo: **branco** na entrada e **preto** na saída |
+| Túnel | Cinza escuro | Quadrado com círculo: **branco** na entrada e **preto** na saída |
+| Esteira Subterrânea | Cinza escuro semitransparente | Quadrado com seta, desenhado sobre o chão só com o capacete |
+| Capacete de Engenheiro | Amarelo | Capacete com uma lanterna branca na frente |
 | Inseridor | Azul | Quadrado com um triângulo pequeno na borda do destino e um **braço** (traço escuro com a mão na ponta) que gira da origem até o destino carregando o item. Parado, o braço aponta para a última entrada usada |
 | Versões de Pilha / Configurável | Mesma cor do básico | **2 ou 3 pontos** no canto |
 | Filtro Comum | Verde | Losango com seta; mostra o ícone do item filtrado |
@@ -342,7 +372,8 @@ Os itens transportados usam o **ícone normal do jogo**, que já existe.
 
 **Decidido:** a quantidade e os detalhes só aparecem ao passar o mouse, tanto nas esteiras quanto nas máquinas:
 - **Esteira:** item e quantidade da pilha naquele tile (ex.: "Madeira ×50").
-- **Máquina:** conteúdo dos slots virtuais (ver [Slots virtuais](#slots-virtuais)).
+- **Máquina:** conteúdo dos slots virtuais (ver [Slots virtuais](#slots-virtuais)), só com o [Capacete de Engenheiro](#capacete-de-engenheiro).
+- **Esteira Subterrânea:** item e quantidade, só com o capacete (os segmentos são invisíveis sem ele).
 
 ## Roadmap
 
@@ -357,6 +388,7 @@ Tudo com placeholders, liberado e de graça na loja do Clint. O plano detalhado 
 4. **Salvar/carregar:** itens em trânsito, itens na mão dos Inseridores e slots virtuais persistem no save.
 5. **Roteamento:** Filtros (Comum e Completo), filtro acoplado e Divisor.
 6. **Restante dos itens:** Ponte, esteiras Rápida e Expressa, Inseridores de Pilha e Configurável, Esteira Subterrânea e Regulador.
+   - **6b. Túneis:** a Esteira Subterrânea de vão fixo vira Túnel (entrada e saída) mais Esteiras Subterrâneas, uma por tile, embaixo da terra; Capacete de Engenheiro.
 7. **Dicas ao passar o mouse**, modo de depuração e versão 0.1.0-alpha.
 
 ### Beta: virar um mod jogável
