@@ -36,10 +36,14 @@ internal sealed class ContentRegistrar
             e.LoadFrom(() => PlaceholderTextures.BuildIconSheet(), AssetLoadPriority.Exclusive);
         else if (e.NameWithoutLocale.IsEquivalentTo(PlaceholderTextures.ObjectSheetAssetName))
             e.LoadFrom(() => PlaceholderTextures.BuildObjectSheet(), AssetLoadPriority.Exclusive);
+        else if (e.NameWithoutLocale.IsEquivalentTo(PlaceholderTextures.HatSheetAssetName))
+            e.LoadFrom(() => PlaceholderTextures.BuildHatSheet(), AssetLoadPriority.Exclusive);
         else if (e.NameWithoutLocale.IsEquivalentTo("Data/BigCraftables"))
             e.Edit(this.EditBigCraftables);
         else if (e.NameWithoutLocale.IsEquivalentTo("Data/Objects"))
             e.Edit(this.EditObjects);
+        else if (e.NameWithoutLocale.IsEquivalentTo("Data/Hats"))
+            e.Edit(this.EditHats);
         else if (e.NameWithoutLocale.IsEquivalentTo("Data/Shops") && this.config.UnlockAll)
             e.Edit(this.EditShops);
     }
@@ -67,14 +71,15 @@ internal sealed class ContentRegistrar
     }
 
     /// <summary>
-    /// Acessórios (Ponte e Regulador): objetos comuns que o jogo não coloca no mapa. <c>Object.isPlaceable</c> só aceita
+    /// Ponte, Regulador e Esteira Subterrânea: objetos comuns que o jogo não coloca no mapa. <c>Object.isPlaceable</c> só aceita
     /// categorias -8, -9, -74, -19, o tipo "Crafting" e alguns IDs; "Basic" com categoria 0 não é colocável. A tag
-    /// <c>not_placeable</c> garante isso mesmo se as regras do jogo mudarem. O mod aplica o acessório pelo clique.
+    /// <c>not_placeable</c> garante isso mesmo se as regras do jogo mudarem. O mod aplica o acessório, ou cria o segmento
+    /// subterrâneo, pelo clique.
     /// </summary>
     private void EditObjects(IAssetData asset)
     {
         IDictionary<string, ObjectData> data = asset.AsDictionary<string, ObjectData>().Data;
-        foreach (string id in ItemIds.AllAccessories)
+        foreach (string id in ItemIds.AllObjects)
         {
             string key = ItemIds.TranslationKeyOf(id);
             data[id] = new ObjectData
@@ -95,6 +100,26 @@ internal sealed class ContentRegistrar
         }
     }
 
+    /// <summary>
+    /// Capacete de Engenheiro (plano mestre D18). Formato de <c>Data/Hats</c> na 1.6, separado por <c>/</c> (índices de
+    /// <c>Hat.data_index_*</c>): nome interno, descrição, mostrar o cabelo (<c>true</c>), ignorar o deslocamento do
+    /// penteado (<c>false</c>), tags, nome exibido, índice do sprite e textura.
+    /// </summary>
+    private void EditHats(IAssetData asset)
+    {
+        IDictionary<string, string> data = asset.AsDictionary<string, string>().Data;
+        string key = ItemIds.TranslationKeyOf(ItemIds.EngineerHelmet);
+        string name = Sanitize(this.helper.Translation.Get($"item.{key}.name"));
+        string description = Sanitize(this.helper.Translation.Get($"item.{key}.description"));
+        data[ItemIds.EngineerHelmet] = string.Join("/", ItemIds.EngineerHelmet, description, "true", "false", "", name, "0", PlaceholderTextures.HatSheetAssetName);
+    }
+
+    /// <summary>Tira a barra dos textos, que separa os campos de <c>Data/Hats</c>.</summary>
+    private static string Sanitize(string text)
+    {
+        return text.Replace('/', '-');
+    }
+
     /// <summary>Alpha: o Clint vende todos os itens por 0g, com estoque ilimitado (plano mestre D15).</summary>
     private void EditShops(IAssetData asset)
     {
@@ -105,8 +130,9 @@ internal sealed class ContentRegistrar
         shop.Items ??= new List<ShopItemData>();
         foreach (string id in ItemIds.AllBlocks)
             shop.Items.Add(FreeItem(id, ItemIds.Qualified(id)));
-        foreach (string id in ItemIds.AllAccessories)
-            shop.Items.Add(FreeItem(id, ItemIds.QualifiedAccessory(id)));
+        foreach (string id in ItemIds.AllObjects)
+            shop.Items.Add(FreeItem(id, ItemIds.QualifiedObject(id)));
+        shop.Items.Add(FreeItem(ItemIds.EngineerHelmet, ItemIds.QualifiedHelmet));
     }
 
     /// <summary>Item da loja por 0g, com estoque ilimitado.</summary>

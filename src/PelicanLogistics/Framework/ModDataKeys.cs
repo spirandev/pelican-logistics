@@ -20,8 +20,14 @@ internal static class ModDataKeys
     /// <summary>Quantidade por operação do Inseridor Configurável: número de 1 a 999.</summary>
     public const string ConfiguredAmount = Prefix + "ConfiguredAmount";
 
-    /// <summary>Papel da Esteira Subterrânea, decidido ao colocar: "Entrance" | "Exit".</summary>
-    public const string UndergroundRole = Prefix + "UndergroundRole";
+    /// <summary>Papel do Túnel, decidido ao colocar: "Entrance" | "Exit".</summary>
+    public const string TunnelRole = Prefix + "TunnelRole";
+
+    /// <summary>
+    /// No <c>modData</c> do <b>local</b> (não de um objeto): as Esteiras Subterrâneas do local, em JSON
+    /// (<c>UndergroundLayoutSerializer</c>), plano mestre D19.
+    /// </summary>
+    public const string UndergroundSegments = Prefix + "UndergroundSegments";
 
     /// <summary>Acessório sobre o bloco: "Bridge" | "Regulator" (ausente = nenhum).</summary>
     public const string Accessory = Prefix + "Accessory";
@@ -29,6 +35,6 @@ internal static class ModDataKeys
     /// <summary>Regra do Regulador, em JSON (<c>RegulatorRuleSerializer</c>).</summary>
     public const string RegulatorRule = Prefix + "RegulatorRule";
 
-    /// <summary>Chaves de configuração (tudo menos a direção), apagadas quando o bloco é colocado.</summary>
-    public static readonly string[] Config = { PickupSource, InserterSlotMode, FilterRule, ConfiguredAmount, UndergroundRole, Accessory, RegulatorRule };
+    /// <summary>Chaves de configuração de um bloco (tudo menos a direção), apagadas quando o bloco é colocado.</summary>
+    public static readonly string[] Config = { PickupSource, InserterSlotMode, FilterRule, ConfiguredAmount, TunnelRole, Accessory, RegulatorRule };
 }

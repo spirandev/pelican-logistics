@@ -32,7 +32,7 @@ internal static class NodeFactory
             ItemIds.FilterCommon => new FilterNode(pos, facing, ReadCommonFilterRule(obj)),
             ItemIds.FilterComplete => new FilterNode(pos, facing, ReadCompleteFilterRule(obj)),
             ItemIds.Splitter => new SplitterNode(pos),
-            ItemIds.UndergroundBelt => new UndergroundBeltNode(pos, facing, ReadUndergroundRole(obj)),
+            ItemIds.Tunnel => new TunnelNode(pos, facing, ReadTunnelRole(obj)),
             _ => null,
         };
     }
@@ -78,15 +78,15 @@ internal static class NodeFactory
         obj.modData[ModDataKeys.ConfiguredAmount] = amount.ToString();
     }
 
-    /// <summary>Papel da Esteira Subterrânea; ausente ou inválido → entrada.</summary>
-    public static UndergroundRole ReadUndergroundRole(SObject obj)
+    /// <summary>Papel do Túnel; ausente ou inválido → entrada.</summary>
+    public static TunnelRole ReadTunnelRole(SObject obj)
     {
-        return ReadEnum(obj, ModDataKeys.UndergroundRole, UndergroundRole.Entrance);
+        return ReadEnum(obj, ModDataKeys.TunnelRole, TunnelRole.Entrance);
     }
 
-    public static void WriteUndergroundRole(SObject obj, UndergroundRole role)
+    public static void WriteTunnelRole(SObject obj, TunnelRole role)
     {
-        obj.modData[ModDataKeys.UndergroundRole] = role.ToString();
+        obj.modData[ModDataKeys.TunnelRole] = role.ToString();
     }
 
     /// <summary>Acessório gravado no bloco; ausente ou inválido → nenhum.</summary>

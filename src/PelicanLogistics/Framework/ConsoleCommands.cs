@@ -48,7 +48,10 @@ internal sealed class ConsoleCommands
             return;
         }
 
-        foreach (string qualifiedId in ItemIds.AllBlocks.Select(ItemIds.Qualified).Concat(ItemIds.AllAccessories.Select(ItemIds.QualifiedAccessory)))
+        IEnumerable<string> qualifiedIds = ItemIds.AllBlocks.Select(ItemIds.Qualified)
+            .Concat(ItemIds.AllObjects.Select(ItemIds.QualifiedObject))
+            .Append(ItemIds.QualifiedHelmet);
+        foreach (string qualifiedId in qualifiedIds)
         {
             Item item = ItemRegistry.Create(qualifiedId, GiveAmount);
             Game1.player.addItemByMenuIfNecessary(item);
@@ -69,16 +72,18 @@ internal sealed class ConsoleCommands
 
         string key = WorldRegistry.KeyOf(location);
         LogisticsGrid? grid = this.registry.World.Get(key);
-        if (grid == null || grid.Count == 0)
+        if (grid == null || grid.TotalCount == 0)
         {
             this.monitor.Log(this.helper.Translation.Get("command.dump.empty", new { location = key }), LogLevel.Info);
             return;
         }
 
         var report = new StringBuilder();
-        report.AppendLine(this.helper.Translation.Get("command.dump.header", new { location = key, count = grid.Count }).ToString());
+        report.AppendLine(this.helper.Translation.Get("command.dump.header", new { location = key, count = grid.TotalCount }).ToString());
         foreach (LogisticsNode node in grid.Nodes.OrderBy(n => n.Position.Y).ThenBy(n => n.Position.X))
             report.AppendLine("  " + Describe(node));
+        foreach (UndergroundSegmentNode segment in grid.UndergroundNodes.OrderBy(n => n.Position.Y).ThenBy(n => n.Position.X))
+            report.AppendLine("  " + Describe(segment));
 
         this.monitor.Log(report.ToString().TrimEnd(), LogLevel.Info);
     }
@@ -101,6 +106,8 @@ internal sealed class ConsoleCommands
         var report = new StringBuilder();
         if (node != null)
             report.AppendLine(this.helper.Translation.Get("command.inspect.node", new { node = Describe(node) }).ToString());
+        if (this.registry.GetSegment(location, pos) is { } segment)
+            report.AppendLine(this.helper.Translation.Get("command.inspect.node", new { node = Describe(segment) }).ToString());
 
         if (endpoint is MachineEndpoint machine)
         {
@@ -158,10 +165,11 @@ internal sealed class ConsoleCommands
                 if (inserter.Regulator != null)
                     line.Append($" regulator={DescribeRegulator(inserter.Regulator)}");
                 break;
-            case UndergroundBeltNode underground:
-                line.Append($" role={underground.Role} partner={underground.Partner?.Position.ToString() ?? "-"}");
-                if (underground.Role == UndergroundRole.Entrance)
-                    line.Append($" tunnel={underground.TunnelLength}");
+            case TunnelNode tunnel:
+                line.Append($" role={tunnel.Role}");
+                break;
+            case UndergroundSegmentNode segment:
+                line.Append($" input={segment.InputSide} (subterrânea)");
                 break;
             case FilterNode filter:
                 line.Append($" rule={DescribeRule(filter.Rule)}");

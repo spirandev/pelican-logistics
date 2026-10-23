@@ -177,12 +177,12 @@ internal sealed class SaveManager
         }
     }
 
-    /// <summary>Todos os itens do Core: espaços dos nós e slots virtuais.</summary>
+    /// <summary>Todos os itens do Core: espaços dos nós (das duas camadas) e slots virtuais.</summary>
     private static IEnumerable<Item> AllItems(LogisticsWorld world)
     {
         foreach (LogisticsGrid grid in world.Grids.Select(pair => pair.Value))
         {
-            foreach (LogisticsNode node in grid.Nodes)
+            foreach (LogisticsNode node in grid.Nodes.Concat(grid.UndergroundNodes))
             {
                 foreach (TransitSlot slot in node.Slots)
                 {
