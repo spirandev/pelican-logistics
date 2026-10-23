@@ -14,7 +14,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
 | 6: Itens restantes | Concluída | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | OK em 2026-10-22 |
 | 6b: Túneis | Concluída | `fase-6b-tuneis` | [#8](https://github.com/spirandev/pelican-logistics/pull/8) | OK em 2026-10-23 |
-| 6c: Roteamento subterrâneo | Aguardando teste local | `fase-6c-roteamento-subterraneo` | (PR) | |
+| 6c: Roteamento subterrâneo | Aguardando teste local | `fase-6c-roteamento-subterraneo` | [#9](https://github.com/spirandev/pelican-logistics/pull/9) | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
 A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7. A Fase 6b (Túneis) foi criada em 2026-10-19, antes do teste local da Fase 6, a pedido do usuário: a Esteira Subterrânea de vão fixo vira Túnel + Esteiras Subterrâneas por tile, com o Capacete de Engenheiro (README e plano mestre D18 a D21 já atualizados). A Fase 6c (Roteamento subterrâneo) foi criada em 2026-10-23, depois do teste da 6b, também a pedido do usuário: Divisor e Filtros embaixo da terra (README "Roteamento subterrâneo"; plano mestre D22 e D23).
