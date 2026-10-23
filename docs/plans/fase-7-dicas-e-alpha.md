@@ -4,7 +4,7 @@
 
 - **Branch:** `fase-7-dicas-e-alpha`
 - **PR:** `Fase 7: Dicas e alpha 0.1.0`
-- **Depende de:** Fase 6b mesclada.
+- **Depende de:** Fase 6c mesclada.
 
 ## Objetivo
 
@@ -49,6 +49,7 @@ Conteúdo (as chaves são do i18n):
 | Inseridor | nome do tier | "Retirar de" e "Colocar em"; item na mão; quantidade se Configurável; regulador e limite se houver |
 | Túnel | "Entrada"/"Saída" | item em trânsito; na entrada, "Sem Esteira Subterrânea à frente" se for o caso |
 | Esteira Subterrânea (só com o capacete) | "Esteira Subterrânea" | item em trânsito e quantidade, ou "vazia"; "Bloqueada" se `Blocked` |
+| Divisor e Filtros Subterrâneos (só com o capacete) | o nome do item subterrâneo | as mesmas linhas do Divisor e dos Filtros da superfície |
 | Máquina com slots virtuais (só com o capacete) | nome da máquina (o adaptador preenche) | `Principal: 3/5 Minério de cobre`; uma linha por adicional `Adicional: 1/1 Carvão` |
 
 Itens são referenciados nas linhas pelo `DisplayName` e pela quantidade nos `Args`.
@@ -75,7 +76,7 @@ Um teste que monta **10.000 nós** (linhas longas, curvas, Divisores) e roda **6
   - tile do cursor (`Helper.Input.GetCursorPosition().Tile`) no local atual;
   - nó nosso no tile (superfície) → `TooltipBuilder.ForNode`;
   - senão, com o capacete ativo (`EngineerHelmet.IsActive`), máquina com slots virtuais não vazios → `TooltipBuilder.ForMachine`, com o título = `DisplayName` da máquina;
-  - senão, com o capacete ativo, segmento no tile → `TooltipBuilder.ForNode` do segmento;
+  - senão, com o capacete ativo, bloco subterrâneo no tile (Esteira, Divisor ou Filtro Subterrâneo) → `TooltipBuilder.ForNode` dele;
   - traduz com `Helper.Translation.Get(key, args)` e desenha com `IClickableMenu.drawHoverText(b, texto, Game1.smallFont, …)` junto ao cursor.
 - Não mostrar a dica do mod ao mesmo tempo que outra dica do jogo para o mesmo objeto, se isso causar sobreposição; registre no PR como ficou.
 

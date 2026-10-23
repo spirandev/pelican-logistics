@@ -13,10 +13,11 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 4: Persistência | Concluída | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | Compila contra o jogo; salvar/carregar não testado no jogo (ver pendências) |
 | 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
 | 6: Itens restantes | Concluída | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | OK em 2026-10-22 |
-| 6b: Túneis | Não iniciada | | | |
+| 6b: Túneis | Concluída | `fase-6b-tuneis` | [#8](https://github.com/spirandev/pelican-logistics/pull/8) | OK em 2026-10-23 |
+| 6c: Roteamento subterrâneo | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
-A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7. A Fase 6b (Túneis) foi criada em 2026-10-19, antes do teste local da Fase 6, a pedido do usuário: a Esteira Subterrânea de vão fixo vira Túnel + Esteiras Subterrâneas por tile, com o Capacete de Engenheiro (README e plano mestre D18 a D21 já atualizados).
+A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7. A Fase 6b (Túneis) foi criada em 2026-10-19, antes do teste local da Fase 6, a pedido do usuário: a Esteira Subterrânea de vão fixo vira Túnel + Esteiras Subterrâneas por tile, com o Capacete de Engenheiro (README e plano mestre D18 a D21 já atualizados). A Fase 6c (Roteamento subterrâneo) foi criada em 2026-10-23, depois do teste da 6b, também a pedido do usuário: Divisor e Filtros embaixo da terra (README "Roteamento subterrâneo"; plano mestre D22 e D23).
 
 ---
 
@@ -70,6 +71,12 @@ Formato sugerido:
 - Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos), os 399 testes do Core passam e foi instalado na pasta `Mods`.
 - Testado pelo usuário em 2026-10-22: os itens novos aparecem no Clint e "tudo certo" no teste.
 - A Esteira Subterrânea de vão fixo será substituída na Fase 6b (Túnel + Esteiras Subterrâneas por tile + Capacete de Engenheiro, `fase-6b-tuneis.md`).
+
+### Da fase 6b
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos), os 422 testes do Core passam e foi instalado na pasta `Mods`.
+- Testado pelo usuário em 2026-10-23: "está tudo funcionando muito bem".
+- Ajuste pedido no teste e feito na própria branch: segurando a Esteira Subterrânea, o botão de usar ferramenta (esquerdo do mouse) também coloca e retira, como o de ação. Retirar com a mão livre continua só no botão de ação.
+- Pedido de mudança do usuário: Divisor e Filtros também embaixo da terra. Virou a Fase 6c (`fase-6c-roteamento-subterraneo.md`).
 
 ---
 
@@ -163,3 +170,22 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Interface do Inseridor: quando a forma muda (modo do Regulador, item adicionado ou removido, "Remover regulador"), a interface é fechada e aberta de novo com as linhas certas. A lista Por item fica numa segunda coluna; "Adicionar item" abre uma tela própria com o inventário (o inventário tem 768 px e não caberia ao lado da lista em 1366×768). O Regulador removido vai para o inventário, ou cai no chão se não couber.
 - `NumberField`: botões com texto ASCII (`-10`, `-1`, `+1`, `+10`), o campo aceita no máximo os dígitos do limite (3 para 999, 5 para 99.999) e, solto, mostra o valor corrigido. Os textos dos itens usam "2 vezes" em vez de "2×" (o sinal pode não existir na fonte do jogo).
 - Quebrar um bloco apaga o acessório do `modData` do objeto recolhido (o acessório já caiu no chão).
+
+### Fase 6b
+- Branch: sessão local, com o nome do plano (`fase-6b-tuneis`).
+- Pendências da Fase 6: nenhuma de correção.
+- Compilação: o mod foi compilado contra o jogo (0 avisos, 0 erros) e instalado na pasta `Mods`. As "APIs a confirmar" foram conferidas no código descompilado (ver o PR).
+- `NodeKind` com valores explícitos: o 4 (Subterrânea antiga) fica sem uso; `Tunnel = 5`, `UndergroundSegment = 6`. Um estado salvo com a Subterrânea antiga vira órfão (os itens caem no chão).
+- Esteira e Esteira Subterrânea compartilham a base `ConveyorNode` (movimento, curva e junção D11); só o "para onde entregar" muda. A Esteira Subterrânea nunca é puxada por nós da superfície (`GetOutgoingSlot` nulo).
+- A saída do Túnel recebe da Esteira Subterrânea por um método interno (`ReceiveFromUnderground`), não pelo `Accept`, para uma esteira da superfície atrás da saída não conseguir empurrar nela.
+- A Esteira Subterrânea entrega na saída do Túnel só se ela estiver no tile à frente **com a mesma direção** (a traseira da saída virada para a esteira); pela lateral, não.
+- `LogisticsGrid.Nodes`/`Count` continuam só a superfície; `UndergroundNodes` e `TotalCount` cobrem a camada nova (usados no tick do mundo, na exportação do estado e no caminho de emergência do `SaveManager`).
+- Layout das Esteiras Subterrâneas no `modData` do local: a direção vai pelo nome e é lida à mão, para uma direção inválida descartar só aquela entrada; posição repetida também é descartada. Ao carregar, uma posição que não aceita mais Esteira Subterrânea (ex.: Túnel em cima) é descartada com aviso, e o layout é regravado.
+- "Dá para cavar": dentro do mapa, fora da água (`isWaterTile`), com tile na camada `Back` e sem tile na camada `Buildings` do mapa (paredes, penhascos). Construções do jogador (`location.buildings`) não impedem.
+- Retirar com a mão livre (D20): o tile não pode ter objeto ou móvel (`getObjectAtTile`), construção (`getBuildingAt`), arbusto (`getLargeTerrainFeatureAt`), toco/pedra grande (`resourceClumps`) nem terrain feature além de `Flooring` e `Grass`.
+- Girar uma Esteira Subterrânea: `R` com o capacete na cabeça e a mão livre, quando o tile não tem bloco na superfície (com bloco, `R` gira o bloco, como antes).
+- Túnel sem capacete: o patch em `canBePlacedHere` barra a colocação e a prévia fica vermelha; a mensagem ("Você precisa do Capacete de Engenheiro na cabeça.") vem do clique, porque o jogo chama o método sem pedir erro. Túnel sobre uma Esteira Subterrânea: "Há uma Esteira Subterrânea embaixo deste tile."
+- Capacete: folha 20×80 na ordem do `FarmerRenderer` (baixo, direita, esquerda, cima, conferida no código descompilado); `Data/Hats` com "mostrar o cabelo" = `true` e sem tags. A posição do desenho na cabeça é um palpite do placeholder.
+- Descrições técnicas: `Object.getDescription` não guarda cache (a descrição é montada a cada chamada), então pôr ou tirar o capacete muda a dica na hora. O texto técnico é quebrado com a mesma largura do jogo (`getDescriptionWidth` é protegido; a conta foi copiada). Os números usam a cultura do i18n (`tech.culture`, "0,5" em pt-BR).
+- A camada subterrânea é desenhada no `RenderedWorld`, por cima de tudo ("visão de raio X"), com 55% de opacidade.
+- Sons: `dirtyHit` ao colocar e retirar Esteira Subterrânea (o jogo usa esse som).

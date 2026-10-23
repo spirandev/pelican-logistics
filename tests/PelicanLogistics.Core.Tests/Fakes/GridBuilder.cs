@@ -66,16 +66,35 @@ public sealed class GridBuilder
         return this;
     }
 
-    /// <summary>Esteira Subterrânea com o papel decidido como o adaptador faz ao colocar (<see cref="UndergroundPairing.DecideRole"/>).</summary>
-    public GridBuilder Underground(int x, int y, Direction facing)
+    /// <summary>Túnel com o papel decidido como o adaptador faz ao colocar (<see cref="TunnelRules.DecideRole"/>).</summary>
+    public GridBuilder Tunnel(int x, int y, Direction facing)
     {
-        var pos = new TilePos(x, y);
-        return this.Underground(x, y, facing, UndergroundPairing.DecideRole(this.Grid, pos, facing));
+        return this.Tunnel(x, y, facing, TunnelRules.DecideRole(this.Grid, new TilePos(x, y), facing));
     }
 
-    public GridBuilder Underground(int x, int y, Direction facing, UndergroundRole role)
+    public GridBuilder Tunnel(int x, int y, Direction facing, TunnelRole role)
     {
-        this.Grid.Add(new UndergroundBeltNode(new TilePos(x, y), facing, role));
+        this.Grid.Add(new TunnelNode(new TilePos(x, y), facing, role));
+        return this;
+    }
+
+    /// <summary>Esteira Subterrânea (camada subterrânea).</summary>
+    public GridBuilder Segment(int x, int y, Direction facing)
+    {
+        this.Grid.AddUnderground(new UndergroundSegmentNode(new TilePos(x, y), facing));
+        return this;
+    }
+
+    /// <summary>Esteiras Subterrâneas em linha reta, de (x, y) andando 'count' tiles na direção indicada.</summary>
+    public GridBuilder Segments(int x, int y, Direction facing, int count)
+    {
+        var pos = new TilePos(x, y);
+        for (int i = 0; i < count; i++)
+        {
+            this.Grid.AddUnderground(new UndergroundSegmentNode(pos, facing));
+            pos = pos.Offset(facing);
+        }
+
         return this;
     }
 
@@ -128,7 +147,10 @@ public sealed class GridBuilder
 
     public SplitterNode SplitterAt(int x, int y) => this.NodeAt<SplitterNode>(x, y);
 
-    public UndergroundBeltNode UndergroundAt(int x, int y) => this.NodeAt<UndergroundBeltNode>(x, y);
+    public TunnelNode TunnelAt(int x, int y) => this.NodeAt<TunnelNode>(x, y);
+
+    /// <summary>A Esteira Subterrânea do tile (falha o teste se não houver).</summary>
+    public UndergroundSegmentNode SegmentAt(int x, int y) => Assert.IsType<UndergroundSegmentNode>(this.Grid.GetUnderground(new TilePos(x, y)));
 
     /// <summary>Slots virtuais da máquina no tile, ou null se não há nada guardado.</summary>
     public VirtualSlots? SlotsAt(int x, int y) => this.Grid.MachineSlots.Get(new TilePos(x, y));
@@ -139,9 +161,9 @@ public sealed class GridBuilder
         return Assert.IsType<T>(this.Grid.Get(new TilePos(x, y)));
     }
 
-    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós: esteiras, filtros, Divisores, Subterrâneas e mãos dos Inseridores).</summary>
+    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós das duas camadas: esteiras, filtros, Divisores, Túneis, Esteiras Subterrâneas e mãos dos Inseridores).</summary>
     public int CountInTransit()
     {
-        return this.Grid.Nodes.SelectMany(n => n.Slots).Where(s => s.Item != null).Sum(s => s.Item!.Count);
+        return this.Grid.Nodes.Concat<LogisticsNode>(this.Grid.UndergroundNodes).SelectMany(n => n.Slots).Where(s => s.Item != null).Sum(s => s.Item!.Count);
     }
 }

@@ -8,9 +8,9 @@ using PelicanLogistics.Core.Simulation;
 namespace PelicanLogistics.Core.Nodes;
 
 /// <summary>
-/// Divisor (README "Divisor"): bloco sem direção com 4 portas. Cada esteira, filtro, Inseridor ou saída de Esteira
-/// Subterrânea que aponta para ele é uma entrada, e cada esteira ou filtro que sai dele, ou Inseridor ou entrada de
-/// Subterrânea com a traseira virada para ele, é uma saída (portas calculadas pela <see cref="Topology"/>, plano mestre D4).
+/// Divisor (README "Divisor"): bloco sem direção com 4 portas. Cada esteira, filtro, Inseridor ou saída de Túnel que
+/// aponta para ele é uma entrada, e cada esteira ou filtro que sai dele, ou Inseridor ou entrada de Túnel com a traseira
+/// virada para ele, é uma saída (portas calculadas pela <see cref="Topology"/>, plano mestre D4).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -48,10 +48,10 @@ public sealed class SplitterNode : LogisticsNode
     /// <summary>Última saída usada no rodízio. Null = nunca entregou (o rodízio começa pelo norte).</summary>
     public Direction? LastOutput { get; internal set; }
 
-    /// <summary>Lados com uma esteira, filtro, Inseridor ou saída de Subterrânea apontando para o Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
+    /// <summary>Lados com uma esteira, filtro, Inseridor ou saída de Túnel apontando para o Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
     public IReadOnlyList<Direction> Inputs { get; internal set; } = Array.Empty<Direction>();
 
-    /// <summary>Lados com uma esteira, filtro, Inseridor ou entrada de Subterrânea que recebe do Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
+    /// <summary>Lados com uma esteira, filtro, Inseridor ou entrada de Túnel que recebe do Divisor, em ordem horária. Calculado pela <see cref="Topology"/>.</summary>
     public IReadOnlyList<Direction> Outputs { get; internal set; } = Array.Empty<Direction>();
 
     public override IEnumerable<TransitSlot> Slots => new[] { this.Slot };

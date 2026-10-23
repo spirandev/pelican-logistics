@@ -30,17 +30,14 @@ public static class Balance
     /// <summary>Divisor: velocidade máxima.</summary>
     public const int SplitterSpeed = 40;
 
-    /// <summary>Esteira subterrânea: velocidade máxima.</summary>
-    public const int UndergroundSpeed = 40;
+    /// <summary>Túnel e Esteira Subterrânea: velocidade do tier 2 (a infraestrutura subterrânea é mais complexa de construir).</summary>
+    public const int UndergroundSpeed = BeltSpeedFast;
 
     /// <summary>Progresso da mão do Inseridor por tick: a ida da origem ao destino leva <see cref="End"/> / 40 = 15 ticks.</summary>
     public const int InserterSpeed = 40;
 
     /// <summary>Ticks da volta do braço, vazio. Ida + volta = 30 ticks = 1 operação a cada 0,5 s (todas as versões).</summary>
     public const int InserterReturnTicks = 15;
-
-    /// <summary>Tiles que a Esteira Subterrânea atravessa.</summary>
-    public const int UndergroundMaxGap = 5;
 
     /// <summary>Limite das versões Configuráveis.</summary>
     public const int MaxConfigurableAmount = 999;

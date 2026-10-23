@@ -106,13 +106,13 @@ internal sealed class NodeRenderer
         // Profundidade: abaixo do jogador quando ele está ao sul do bloco. Valor a ajustar no teste local.
         float baseDepth = Math.Max(0f, y * Game1.tileSize / 10000f) + 0.0001f;
 
-        // O Divisor não tem direção: o sprite nunca gira. A esteira em curva e a Subterrânea têm sprites próprios.
+        // O Divisor não tem direção: o sprite nunca gira. A esteira em curva e o Túnel têm sprites próprios.
         float rotation = ItemIds.IsDirectional(obj.ItemId) ? RotationOf(facing) : 0f;
         Texture2D sprite = node switch
         {
             BeltNode { IsCurve: true } belt => PlaceholderTextures.GetBeltCurveSprite(belt.Tier, belt.InputSide == belt.Facing.CounterClockwise()),
-            UndergroundBeltNode underground => PlaceholderTextures.GetUndergroundSprite(underground.Role),
-            null when obj.ItemId == ItemIds.UndergroundBelt => PlaceholderTextures.GetUndergroundSprite(this.PreviewRole(location, obj, pos, facing)),
+            TunnelNode tunnel => PlaceholderTextures.GetTunnelSprite(tunnel.Role),
+            null when obj.ItemId == ItemIds.Tunnel => PlaceholderTextures.GetTunnelSprite(this.PreviewRole(location, obj, pos, facing)),
             _ => PlaceholderTextures.GetWorldSprite(obj.ItemId),
         };
         b.Draw(
@@ -132,11 +132,6 @@ internal sealed class NodeRenderer
                 DrawArm(b, topLeft, ArmMath.GetArmAngle(inserter), inserter.Hand.Item as GameItem, alpha, baseDepth);
                 if (inserter.Accessory == AccessoryKind.Regulator)
                     DrawOverlay(b, PlaceholderTextures.RegulatorOverlay, topLeft, alpha, baseDepth + RegulatorDepthOffset);
-                break;
-
-            case UndergroundBeltNode underground:
-                // Só o slot do próprio tile aparece; o túnel é invisível.
-                DrawTransitSlot(b, underground.Slot, underground.Facing, topLeft, baseDepth);
                 break;
 
             case BeltNode belt:
@@ -167,19 +162,20 @@ internal sealed class NodeRenderer
     }
 
     /// <summary>
-    /// Papel de uma Esteira Subterrânea sem nó: na prévia de colocação, o papel que ela teria no tile do cursor
-    /// (<see cref="UndergroundPairing.DecideRole"/>); num objeto colocado ainda sem nó, o do <c>modData</c>.
+    /// Papel de um Túnel sem nó: num objeto colocado ainda sem nó, o do <c>modData</c>; na prévia de colocação, o papel
+    /// que ele teria no tile do cursor (<see cref="TunnelRules.DecideRole"/>), só com o Capacete de Engenheiro ativo
+    /// (sem ele, a prévia mostra a entrada, plano mestre D18).
     /// </summary>
-    private UndergroundRole PreviewRole(GameLocation? location, SObject obj, TilePos pos, Direction facing)
+    private TunnelRole PreviewRole(GameLocation? location, SObject obj, TilePos pos, Direction facing)
     {
         if (location == null)
-            return UndergroundRole.Entrance;
+            return TunnelRole.Entrance;
 
         if (location.objects.TryGetValue(new Vector2(pos.X, pos.Y), out SObject? placed) && ReferenceEquals(placed, obj))
-            return NodeFactory.ReadUndergroundRole(obj);
+            return NodeFactory.ReadTunnelRole(obj);
 
         LogisticsGrid? grid = this.registry.World.Get(WorldRegistry.KeyOf(location));
-        return grid != null ? UndergroundPairing.DecideRole(grid, pos, facing) : UndergroundRole.Entrance;
+        return grid != null && EngineerHelmet.IsActive ? TunnelRules.DecideRole(grid, pos, facing) : TunnelRole.Entrance;
     }
 
     /// <summary>Desenha um sprite 16×16 de acessório sobre o tile inteiro, sem girar.</summary>

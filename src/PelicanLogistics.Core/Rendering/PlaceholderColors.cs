@@ -13,8 +13,14 @@ public static class PlaceholderColors
 
     public static readonly Rgba Underground = new(70, 70, 70);
 
-    /// <summary>Círculo da saída da Esteira Subterrânea (o da entrada é <see cref="Mark"/>, branco).</summary>
-    public static readonly Rgba UndergroundExit = new(0, 0, 0);
+    /// <summary>Círculo da saída do Túnel (o da entrada é <see cref="Mark"/>, branco).</summary>
+    public static readonly Rgba TunnelExit = new(0, 0, 0);
+
+    /// <summary>Capacete de Engenheiro.</summary>
+    public static readonly Rgba Helmet = new(235, 185, 20);
+
+    /// <summary>Aba e sombra do Capacete de Engenheiro.</summary>
+    public static readonly Rgba HelmetShade = new(170, 125, 10);
     public static readonly Rgba Inserter = new(40, 110, 230);
     public static readonly Rgba FilterCommon = new(60, 180, 75);
     public static readonly Rgba FilterComplete = new(25, 110, 45);

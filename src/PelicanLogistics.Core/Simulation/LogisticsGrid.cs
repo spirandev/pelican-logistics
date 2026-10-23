@@ -9,16 +9,29 @@ using PelicanLogistics.Core.Regulators;
 
 namespace PelicanLogistics.Core.Simulation;
 
-/// <summary>Os nós de um local do jogo.</summary>
+/// <summary>
+/// Os nós de um local do jogo, em duas camadas: a <b>superfície</b> (um bloco por tile) e a <b>subterrânea</b> (no máximo
+/// uma <see cref="UndergroundSegmentNode"/> por tile). Um tile pode ter um nó em cada camada; só o <see cref="TunnelNode"/>
+/// liga as duas (plano mestre D19).
+/// </summary>
 public sealed class LogisticsGrid
 {
     private readonly Dictionary<TilePos, LogisticsNode> nodes = new();
+    private readonly Dictionary<TilePos, UndergroundSegmentNode> underground = new();
     private IReadOnlyList<LogisticsNode> order = Array.Empty<LogisticsNode>();
     private bool dirty;
 
+    /// <summary>Os nós da superfície.</summary>
     public IEnumerable<LogisticsNode> Nodes => this.nodes.Values;
 
+    /// <summary>Quantos nós há na superfície.</summary>
     public int Count => this.nodes.Count;
+
+    /// <summary>As Esteiras Subterrâneas.</summary>
+    public IEnumerable<UndergroundSegmentNode> UndergroundNodes => this.underground.Values;
+
+    /// <summary>Quantos nós há nas duas camadas.</summary>
+    public int TotalCount => this.nodes.Count + this.underground.Count;
 
     /// <summary>Slots virtuais das máquinas abastecidas pelos Inseridores deste local.</summary>
     public MachineSlotStore MachineSlots { get; } = new();
@@ -33,11 +46,13 @@ public sealed class LogisticsGrid
         }
     }
 
-    /// <summary>Adiciona um nó. Lança exceção se já houver nó na posição.</summary>
+    /// <summary>Adiciona um nó da superfície. Lança exceção se já houver nó na posição ou se for uma Esteira Subterrânea.</summary>
     public void Add(LogisticsNode node)
     {
         if (node == null)
             throw new ArgumentNullException(nameof(node));
+        if (node is UndergroundSegmentNode)
+            throw new ArgumentException("Esteiras Subterrâneas vão na camada subterrânea (AddUnderground).", nameof(node));
         if (this.nodes.ContainsKey(node.Position))
             throw new InvalidOperationException($"Já existe um nó em {node.Position}.");
 
@@ -45,22 +60,50 @@ public sealed class LogisticsGrid
         this.MarkDirty();
     }
 
-    /// <summary>Remove o nó e devolve os itens de todos os seus espaços e o acessório.</summary>
+    /// <summary>Remove o nó da superfície e devolve os itens de todos os seus espaços e o acessório.</summary>
     public RemovalResult Remove(TilePos pos)
     {
         if (!this.nodes.Remove(pos, out LogisticsNode? node))
             return RemovalResult.Empty;
 
-        var items = new List<ILogisticsItem>();
-        foreach (TransitSlot slot in node.Slots)
-        {
-            ILogisticsItem? item = slot.Clear();
-            if (item != null)
-                items.Add(item);
-        }
+        this.MarkDirty();
+        return new RemovalResult(ClearSlots(node), node.Accessory);
+    }
+
+    /// <summary>Adiciona uma Esteira Subterrânea. Lança exceção se o tile já tem uma.</summary>
+    public void AddUnderground(UndergroundSegmentNode segment)
+    {
+        if (segment == null)
+            throw new ArgumentNullException(nameof(segment));
+        if (this.underground.ContainsKey(segment.Position))
+            throw new InvalidOperationException($"Já existe uma Esteira Subterrânea em {segment.Position}.");
+
+        this.underground[segment.Position] = segment;
+        this.MarkDirty();
+    }
+
+    public UndergroundSegmentNode? GetUnderground(TilePos pos)
+    {
+        return this.underground.TryGetValue(pos, out UndergroundSegmentNode? segment) ? segment : null;
+    }
+
+    /// <summary>Remove a Esteira Subterrânea do tile e devolve o item dela (nunca há acessório).</summary>
+    public RemovalResult RemoveUnderground(TilePos pos)
+    {
+        if (!this.underground.Remove(pos, out UndergroundSegmentNode? segment))
+            return RemovalResult.Empty;
 
         this.MarkDirty();
-        return new RemovalResult(items, node.Accessory);
+        return new RemovalResult(ClearSlots(segment), AccessoryKind.None);
+    }
+
+    /// <summary>
+    /// True se dá para colocar uma Esteira Subterrânea no tile: sem outra Esteira Subterrânea e sem Túnel na superfície
+    /// (plano mestre D21). Outros blocos da superfície não impedem; as regras do mapa (água, paredes) ficam no adaptador.
+    /// </summary>
+    public bool CanPlaceSegment(TilePos pos)
+    {
+        return !this.underground.ContainsKey(pos) && this.Get(pos) is not TunnelNode;
     }
 
     /// <summary>
@@ -115,7 +158,7 @@ public sealed class LogisticsGrid
         this.dirty = true;
     }
 
-    /// <summary>Um tick de lógica: atualiza todos os nós, de jusante para montante, e depois aciona as máquinas.</summary>
+    /// <summary>Um tick de lógica: atualiza todos os nós (das duas camadas), de jusante para montante, e depois aciona as máquinas.</summary>
     public void Tick(IEndpointProvider endpoints)
     {
         var ctx = new TickContext(this, endpoints);
@@ -149,6 +192,20 @@ public sealed class LogisticsGrid
             if (machine.TryStart(slots.Main!, additional))
                 slots.RemoveConsumed();
         }
+    }
+
+    /// <summary>Esvazia todos os espaços do nó e devolve os itens.</summary>
+    private static List<ILogisticsItem> ClearSlots(LogisticsNode node)
+    {
+        var items = new List<ILogisticsItem>();
+        foreach (TransitSlot slot in node.Slots)
+        {
+            ILogisticsItem? item = slot.Clear();
+            if (item != null)
+                items.Add(item);
+        }
+
+        return items;
     }
 
     private void EnsureTopology()

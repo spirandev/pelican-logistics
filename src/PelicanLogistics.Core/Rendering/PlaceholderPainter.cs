@@ -12,6 +12,9 @@ public static class PlaceholderPainter
 {
     public const int SpriteSize = 16;
 
+    /// <summary>Lado de um quadro de chapéu no jogo (<c>Hat.widthOfTileSheetSquare</c>).</summary>
+    public const int HatSize = 20;
+
     /// <summary>Quadrado cinza (claro/médio/escuro conforme o tier) com 1, 2 ou 3 setas brancas para cima.</summary>
     public static PixelBuffer PaintBelt(BeltTier tier)
     {
@@ -23,6 +26,26 @@ public static class PlaceholderPainter
             _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Tier de esteira inválido."),
         };
 
+        return PaintStraightConveyor(color, arrowRows);
+    }
+
+    /// <summary>
+    /// Esteira Subterrânea reta: quadrado cinza escuro com 2 setas brancas para cima (velocidade do tier 2). O adaptador
+    /// desenha semitransparente, só com o Capacete de Engenheiro.
+    /// </summary>
+    public static PixelBuffer PaintUndergroundSegment()
+    {
+        return PaintStraightConveyor(PlaceholderColors.Underground, new[] { 5, 11 });
+    }
+
+    /// <summary>Esteira Subterrânea em curva, como <see cref="PaintBeltCurve"/> do tier 2, em cinza escuro.</summary>
+    public static PixelBuffer PaintUndergroundSegmentCurve(bool fromLeft)
+    {
+        return PaintCurvedConveyor(PlaceholderColors.Underground, new[] { (4, 8, Direction.East), (8, 4, Direction.North) }, fromLeft);
+    }
+
+    private static PixelBuffer PaintStraightConveyor(Rgba color, int[] arrowRows)
+    {
         var buffer = new PixelBuffer(SpriteSize, SpriteSize);
         buffer.FillRect(0, 0, SpriteSize, SpriteSize, color);
         buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
@@ -46,6 +69,12 @@ public static class PlaceholderPainter
             _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Tier de esteira inválido."),
         };
 
+        return PaintCurvedConveyor(color, arrows, fromLeft);
+    }
+
+    /// <summary>Curva apontando para o NORTE, recebendo pelo oeste (fromLeft) ou pelo leste, com as setas indicadas (na versão "pela esquerda").</summary>
+    private static PixelBuffer PaintCurvedConveyor(Rgba color, (int X, int Y, Direction Dir)[] arrows, bool fromLeft)
+    {
         // A perna vertical fica na coluna 8, como a seta da reta; a horizontal vai até a borda da entrada.
         var buffer = new PixelBuffer(SpriteSize, SpriteSize);
         buffer.FillRect(0, 0, SpriteSize, SpriteSize, color);
@@ -127,15 +156,15 @@ public static class PlaceholderPainter
     }
 
     /// <summary>
-    /// Esteira Subterrânea: quadrado cinza escuro com uma seta branca pequena na borda de cima (o sentido) e um círculo
-    /// branco (entrada) ou preto (saída) com contorno.
+    /// Túnel: quadrado cinza escuro com uma seta branca pequena na borda de cima (o sentido) e um círculo branco (entrada)
+    /// ou preto (saída) com contorno.
     /// </summary>
-    public static PixelBuffer PaintUnderground(UndergroundRole role)
+    public static PixelBuffer PaintTunnel(TunnelRole role)
     {
         Rgba circle = role switch
         {
-            UndergroundRole.Entrance => PlaceholderColors.Mark,
-            UndergroundRole.Exit => PlaceholderColors.UndergroundExit,
+            TunnelRole.Entrance => PlaceholderColors.Mark,
+            TunnelRole.Exit => PlaceholderColors.TunnelExit,
             _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Papel inválido."),
         };
 
@@ -195,6 +224,42 @@ public static class PlaceholderPainter
             default:
                 throw new ArgumentOutOfRangeException(nameof(kind), kind, "Acessório sem ícone.");
         }
+    }
+
+    /// <summary>
+    /// Capacete de Engenheiro no formato de chapéu do jogo: 20×80, quatro quadros de 20×20, de cima para baixo virado para
+    /// baixo, para a direita, para a esquerda e para cima (a ordem do <c>FarmerRenderer</c>). Capacete amarelo com aba
+    /// escura; a lanterna branca fica na frente (de frente, no centro; de lado, na ponta do lado para onde olha; de costas,
+    /// não aparece).
+    /// </summary>
+    public static PixelBuffer PaintEngineerHelmet()
+    {
+        var sheet = new PixelBuffer(HatSize, HatSize * 4);
+        for (int frame = 0; frame < 4; frame++)
+        {
+            int top = frame * HatSize;
+
+            // Cúpula (linhas 4 a 10) e aba (linha 11).
+            sheet.FillCircle(10f, top + 10f, 6f, PlaceholderColors.Helmet);
+            sheet.FillRect(3, top + 10, 14, 6, Rgba.Transparent);
+            sheet.FillRect(3, top + 10, 14, 2, PlaceholderColors.HelmetShade);
+
+            // Lanterna: de frente (0), para a direita (1), para a esquerda (2); de costas (3), nada.
+            int? lampX = frame switch
+            {
+                0 => 9,
+                1 => 13,
+                2 => 5,
+                _ => null,
+            };
+            if (lampX is { } x)
+            {
+                sheet.FillRect(x, top + 6, 2, 3, PlaceholderColors.Mark);
+                sheet.DrawRect(x - 1, top + 5, 4, 5, PlaceholderColors.Outline);
+            }
+        }
+
+        return sheet;
     }
 
     /// <summary>Seta grande branca apontando para cima, em fundo transparente (seta fantasma de colocação).</summary>

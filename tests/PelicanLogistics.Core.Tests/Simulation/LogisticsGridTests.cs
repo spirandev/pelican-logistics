@@ -214,13 +214,13 @@ public class LogisticsGridTests
     }
 
     [Fact]
-    public void TrySetAccessory_Bridge_FailsOnFilterSplitterInserterAndUnderground()
+    public void TrySetAccessory_Bridge_FailsOnFilterSplitterInserterAndTunnel()
     {
         var g = new GridBuilder()
             .Filter(0, 0, Direction.East, "(O)388")
             .Splitter(2, 0)
             .Inserter(4, 0, Direction.East)
-            .Underground(6, 0, Direction.East);
+            .Tunnel(6, 0, Direction.East);
 
         foreach (int x in new[] { 0, 2, 4, 6 })
         {
@@ -236,7 +236,7 @@ public class LogisticsGridTests
             .Belt(0, 0, Direction.East)
             .Filter(1, 0, Direction.East, "(O)388")
             .Splitter(3, 0)
-            .Underground(5, 0, Direction.East)
+            .Tunnel(5, 0, Direction.East)
             .Inserter(7, 0, Direction.East, TransferTier.Configurable);
 
         foreach (int x in new[] { 0, 1, 3, 5 })
@@ -332,5 +332,62 @@ public class LogisticsGridTests
 
         Assert.Equal(AccessoryKind.Bridge, result.Accessory);
         Assert.Same(item, Assert.Single(result.Items));
+    }
+
+    // Camada subterrânea (Fase 6b).
+
+    [Fact]
+    public void Add_UndergroundSegment_Throws_AddUnderground_TwiceOnTheSameTile_Throws()
+    {
+        var grid = new LogisticsGrid();
+        var segment = new UndergroundSegmentNode(new TilePos(0, 0), Direction.East);
+
+        Assert.Throws<ArgumentException>(() => grid.Add(segment));
+        grid.AddUnderground(segment);
+        Assert.Throws<InvalidOperationException>(() => grid.AddUnderground(new UndergroundSegmentNode(new TilePos(0, 0), Direction.North)));
+    }
+
+    [Fact]
+    public void Layers_ATileCanHaveASurfaceNodeAndASegment_CountsAreSeparate()
+    {
+        var g = new GridBuilder().Belt(0, 0, Direction.East).Segment(0, 0, Direction.North).Segment(1, 0, Direction.North);
+
+        Assert.IsType<BeltNode>(g.Grid.Get(new TilePos(0, 0)));
+        Assert.NotNull(g.Grid.GetUnderground(new TilePos(0, 0)));
+        Assert.Equal(1, g.Grid.Count);
+        Assert.Equal(3, g.Grid.TotalCount);
+        Assert.Equal(3, g.Grid.ProcessingOrder.Count);
+        Assert.Single(g.Grid.Nodes);
+        Assert.Equal(2, g.Grid.UndergroundNodes.Count());
+    }
+
+    [Fact]
+    public void CanPlaceSegment_NotOnASegmentNorUnderATunnel_UnderOtherBlocksYes()
+    {
+        var g = new GridBuilder()
+            .Segment(0, 0, Direction.East)
+            .Tunnel(1, 0, Direction.East)
+            .Belt(2, 0, Direction.East)
+            .Filter(3, 0, Direction.East, "(O)388")
+            .Splitter(4, 0)
+            .Inserter(5, 0, Direction.East);
+
+        Assert.False(g.Grid.CanPlaceSegment(new TilePos(0, 0)));
+        Assert.False(g.Grid.CanPlaceSegment(new TilePos(1, 0)));
+        foreach (int x in new[] { 2, 3, 4, 5, 6 })
+            Assert.True(g.Grid.CanPlaceSegment(new TilePos(x, 0)));
+    }
+
+    [Fact]
+    public void World_GridWithOnlySegments_StillTicks()
+    {
+        var world = new LogisticsWorld();
+        var g = new GridBuilder(world.GetOrCreate("Farm")).Segments(0, 0, Direction.East, 2);
+        var item = new FakeItem("wood", 1);
+        g.SegmentAt(0, 0).Slot.Put(item, Direction.West);
+
+        world.Tick(_ => g.Endpoints);
+
+        Assert.Equal(Balance.UndergroundSpeed, g.SegmentAt(0, 0).Slot.Progress);
     }
 }

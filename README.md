@@ -59,6 +59,7 @@ Os nomes abaixo são provisórios. Todos os itens são colocados no mapa, como b
 | **Ponte** (Bridge) | 1 | Acessório exclusivo da esteira. Colocado sobre uma esteira existente, permite que o jogador passe por cima daquele tile, e a esteira continua funcionando por baixo. Deve ser barata. |
 | **Túnel** | 3 | Bloco na superfície que leva os itens para baixo da terra (entrada) ou os traz de volta (saída). O mesmo item serve para as duas pontas. Ver [Túnel e Esteira Subterrânea](#túnel-e-esteira-subterrânea). |
 | **Esteira Subterrânea** | 3 | Esteira **embaixo da terra**, uma por tile, ligando a entrada à saída de um Túnel. Não ocupa o tile: dá para plantar, pôr caminho ou cerca por cima. |
+| **Divisor Subterrâneo**, **Filtro Comum Subterrâneo**, **Filtro Completo Subterrâneo** | 3 | O Divisor e os Filtros, embaixo da terra, para montar redes e separadores subterrâneos. Ver [Roteamento subterrâneo](#roteamento-subterrâneo). |
 
 ### Túnel e Esteira Subterrânea
 
@@ -72,20 +73,36 @@ Os nomes abaixo são provisórios. Todos os itens são colocados no mapa, como b
 - **Como uma esteira:** uma pilha por tile, sentido único, faz **curva** sozinha (gira com `R` antes de colocar). Sem comprimento máximo: o custo de 1 item por tile já limita.
 - **Velocidade:** a do tier 2 (2 tiles/s), em toda a corrente e nas duas pontas do Túnel. Construir embaixo da terra é mais complexo, então não é tão rápido quanto a Expressa.
 - **Invisível:** os segmentos e os itens dentro deles só aparecem com o [Capacete de Engenheiro](#capacete-de-engenheiro).
-- **Colocar e retirar:** só com o Capacete de Engenheiro **na cabeça**. Segurando uma Esteira Subterrânea, o botão de ação coloca um segmento num tile vazio e retira um segmento existente. Com a mão livre, o botão de ação também retira um segmento, se não houver mais nada no tile com que o jogo interaja (objeto, móvel, plantação, árvore). Colocar um Túnel também exige o capacete na cabeça.
+- **Colocar e retirar:** só com o Capacete de Engenheiro **na cabeça**. Segurando uma Esteira Subterrânea, o botão de ação ou o de usar ferramenta (direito ou esquerdo do mouse) coloca um segmento num tile vazio e retira um segmento existente. Com a mão livre, o botão de ação também retira um segmento, se não houver mais nada no tile com que o jogo interaja (objeto, móvel, plantação, árvore). Colocar um Túnel também exige o capacete na cabeça.
 - **Removido com itens dentro:** os itens caem no chão, no tile onde estavam.
 - A entrada do Túnel é destino válido do Inseridor e saída válida do Divisor; a saída é origem do Inseridor (por trás ou pela lateral) e entrada do Divisor.
+
+### Roteamento subterrâneo
+
+```
+                                   (Filtro Subterrâneo: Madeira) → … → [Túnel: saída] → baú de madeira
+                                              ↑
+[Túnel: entrada] → (subterrânea) → (Divisor Subterrâneo) → (subterrânea) → … → [Túnel: saída] → resto
+                                              ↓
+                                   (Filtro Subterrâneo: Pedra)   → … → [Túnel: saída] → baú de pedra
+```
+
+- **Itens próprios:** Divisor Subterrâneo, Filtro Comum Subterrâneo e Filtro Completo Subterrâneo. Funcionam exatamente como o [Divisor](#divisor) e o [Filtro](#filtro) da superfície (mesmas regras, prioridade para filtros, divisão igual, ordem horária, sempre rápidos: 4 tiles/s), só que embaixo da terra.
+- **Mesma lógica de tudo que é subterrâneo:** só com o Capacete de Engenheiro na cabeça para colocar e retirar, um bloco subterrâneo por tile, não ocupa o tile da superfície, invisível sem o capacete, nada embaixo de um Túnel, na água ou em paredes e penhascos do mapa.
+- **Conexões:** as portas do Divisor Subterrâneo e a entrada e a saída do Filtro Subterrâneo ligam-se a Esteiras Subterrâneas, outros Filtros Subterrâneos e Túneis: a entrada de um Túnel com a frente virada para o bloco entrega nele; a saída de um Túnel com a traseira virada para o bloco recebe dele. Inseridores, Ponte e Regulador ficam na superfície.
+- **Configurar o Filtro Subterrâneo:** com o capacete na cabeça e a mão livre, o botão de ação no tile abre a interface do filtro (a mesma da superfície). Nesse tile a mão livre não retira o filtro. Se houver algo por cima com que o jogo interaja (plantação, baú...), o clique vai para o jogo.
+- **Retirar:** segurando **qualquer** item subterrâneo (Esteira, Divisor ou Filtro Subterrâneo), o clique num bloco subterrâneo devolve o item **daquele bloco**; num tile vazio, coloca o item que está na mão. Com a mão livre, a Esteira e o Divisor Subterrâneos também saem (se nada por cima responder ao clique).
 
 ### Capacete de Engenheiro
 
 Chapéu do mod (ganha o próprio item; o jogo não tem um chapéu de mineração com lanterna). Com ele **na cabeça ou na mão**, o jogador vê o que fica escondido:
 
-- as Esteiras Subterrâneas e os itens passando dentro delas;
+- as Esteiras Subterrâneas, os Divisores e Filtros Subterrâneos e os itens passando dentro deles;
 - se um Túnel vai virar entrada ou saída, antes de colocar;
 - os **slots virtuais** das máquinas (ver [Slots virtuais](#slots-virtuais));
 - **descrições técnicas** dos itens do mod (ex.: a velocidade de cada esteira, a quantidade por operação do Inseridor).
 
-Com ele **na cabeça**, também pode **construir embaixo da terra**: colocar e retirar Esteiras Subterrâneas e colocar Túneis. Sem o capacete, essas informações nunca aparecem no jogo (os comandos de console, ferramentas de depuração, continuam mostrando tudo). O que já está visível na superfície (itens nas esteiras, quantidade ao passar o mouse) continua visível sem ele.
+Com ele **na cabeça**, também pode **construir embaixo da terra**: colocar e retirar Esteiras, Divisores e Filtros Subterrâneos, configurar os Filtros Subterrâneos e colocar Túneis. Sem o capacete, essas informações nunca aparecem no jogo (os comandos de console, ferramentas de depuração, continuam mostrando tudo). O que já está visível na superfície (itens nas esteiras, quantidade ao passar o mouse) continua visível sem ele.
 
 ### Inseridores
 
@@ -358,6 +375,7 @@ Por que o Clint: ele é o ferreiro, o personagem mais "técnico" da cidade.
 | Ponte | Marrom | Faixa horizontal sobre a esteira |
 | Túnel | Cinza escuro | Quadrado com círculo: **branco** na entrada e **preto** na saída |
 | Esteira Subterrânea | Cinza escuro semitransparente | Quadrado com seta, desenhado sobre o chão só com o capacete |
+| Divisor e Filtros Subterrâneos | Os da superfície, semitransparentes | O desenho do Divisor e dos Filtros, só com o capacete |
 | Capacete de Engenheiro | Amarelo | Capacete com uma lanterna branca na frente |
 | Inseridor | Azul | Quadrado com um triângulo pequeno na borda do destino e um **braço** (traço escuro com a mão na ponta) que gira da origem até o destino carregando o item. Parado, o braço aponta para a última entrada usada |
 | Versões de Pilha / Configurável | Mesma cor do básico | **2 ou 3 pontos** no canto |
@@ -373,7 +391,7 @@ Os itens transportados usam o **ícone normal do jogo**, que já existe.
 **Decidido:** a quantidade e os detalhes só aparecem ao passar o mouse, tanto nas esteiras quanto nas máquinas:
 - **Esteira:** item e quantidade da pilha naquele tile (ex.: "Madeira ×50").
 - **Máquina:** conteúdo dos slots virtuais (ver [Slots virtuais](#slots-virtuais)), só com o [Capacete de Engenheiro](#capacete-de-engenheiro).
-- **Esteira Subterrânea:** item e quantidade, só com o capacete (os segmentos são invisíveis sem ele).
+- **Esteira, Divisor e Filtros Subterrâneos:** item e quantidade (e a regra do filtro), só com o capacete (são invisíveis sem ele).
 
 ## Roadmap
 
@@ -389,6 +407,7 @@ Tudo com placeholders, liberado e de graça na loja do Clint. O plano detalhado 
 5. **Roteamento:** Filtros (Comum e Completo), filtro acoplado e Divisor.
 6. **Restante dos itens:** Ponte, esteiras Rápida e Expressa, Inseridores de Pilha e Configurável, Esteira Subterrânea e Regulador.
    - **6b. Túneis:** a Esteira Subterrânea de vão fixo vira Túnel (entrada e saída) mais Esteiras Subterrâneas, uma por tile, embaixo da terra; Capacete de Engenheiro.
+   - **6c. Roteamento subterrâneo:** Divisor, Filtro Comum e Filtro Completo Subterrâneos.
 7. **Dicas ao passar o mouse**, modo de depuração e versão 0.1.0-alpha.
 
 ### Beta: virar um mod jogável

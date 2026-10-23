@@ -21,6 +21,8 @@ public sealed class ModEntry : Mod
     private PlacementController placement = null!;
     private BlockMenuController menus = null!;
     private AccessoryController accessories = null!;
+    private UndergroundController underground = null!;
+    private UndergroundRenderer undergroundRenderer = null!;
     private SaveManager saves = null!;
 
     public override void Entry(IModHelper helper)
@@ -31,6 +33,8 @@ public sealed class ModEntry : Mod
         this.placement = new PlacementController(helper, this.config, this.registry);
         this.menus = new BlockMenuController(helper, this.registry);
         this.accessories = new AccessoryController(helper, this.registry);
+        this.underground = new UndergroundController(helper, this.registry, this.placement);
+        this.undergroundRenderer = new UndergroundRenderer(this.registry);
         this.saves = new SaveManager(helper, this.Monitor, this.registry);
         var renderer = new NodeRenderer(this.registry, this.placement);
 
@@ -69,6 +73,24 @@ public sealed class ModEntry : Mod
         catch (Exception ex)
         {
             this.Monitor.Log($"Falha ao aplicar o patch da Ponte; não será possível passar por cima das esteiras.\n{ex}", LogLevel.Error);
+        }
+
+        try
+        {
+            TunnelPlacementPatch.Apply(harmony, this.registry);
+        }
+        catch (Exception ex)
+        {
+            this.Monitor.Log($"Falha ao aplicar o patch do Túnel; ele poderá ser colocado sem o Capacete de Engenheiro.\n{ex}", LogLevel.Error);
+        }
+
+        try
+        {
+            DescriptionPatch.Apply(harmony, this.Helper.Translation, this.Monitor);
+        }
+        catch (Exception ex)
+        {
+            this.Monitor.Log($"Falha ao aplicar o patch das descrições; as linhas técnicas do Capacete de Engenheiro não aparecerão.\n{ex}", LogLevel.Error);
         }
     }
 
@@ -120,15 +142,19 @@ public sealed class ModEntry : Mod
         this.placement.OnButtonsChanged(e);
     }
 
-    /// <summary>Acessórios primeiro: segurando uma Ponte ou um Regulador, o clique aplica o acessório em vez de abrir a interface.</summary>
+    /// <summary>
+    /// Esteiras Subterrâneas e acessórios primeiro: segurando uma Esteira Subterrânea, uma Ponte ou um Regulador, o clique
+    /// constrói ou aplica em vez de abrir a interface do bloco.
+    /// </summary>
     private void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
-        if (!this.accessories.OnButtonPressed(e))
+        if (!this.underground.OnButtonPressed(e) && !this.accessories.OnButtonPressed(e))
             this.menus.OnButtonPressed(e);
     }
 
     private void OnRenderedWorld(object? sender, RenderedWorldEventArgs e)
     {
+        this.undergroundRenderer.OnRenderedWorld(e);
         this.placement.OnRenderedWorld(e);
     }
 }

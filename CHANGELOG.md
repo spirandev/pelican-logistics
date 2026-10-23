@@ -52,6 +52,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Mod: desenho da Ponte (por cima do item, semitransparente), do Regulador e da Subterrânea (só os tiles das pontas; a prévia mostra o papel; linha tracejada entre o par ao segurar uma).
 - Mod: interface do Inseridor com "Quantidade por vez" (Configurável) e a seção do Regulador (modo, limite, lista de até 8 itens, "Remover regulador"); linhas novas `NumberRow`, `ButtonRow`, `LabelRow`, `RegulatorItemRow` e `RegulatorItemPickerRow`.
 - Mod: `pl_dump` mostra a quantidade, o Regulador, o acessório e o par da Subterrânea.
+- Core: camada subterrânea na `LogisticsGrid` (`UndergroundSegmentNode`, uma por tile, curva automática, velocidade do tier 2) ligada à superfície pelo `TunnelNode` (entrada ou saída, decidida ao colocar por `TunnelRules`); base comum `ConveyorNode` para as esteiras.
+- Core: a camada vai no estado salvo (`NodeRuntimeState.Layer`); `UndergroundLayoutSerializer` guarda as posições e direções das Esteiras Subterrâneas; `TechnicalInfo` com os números das descrições técnicas.
+- Mod: Túnel (bloco), Esteira Subterrânea (objeto que vira um segmento embaixo da terra, sem ocupar o tile) e Capacete de Engenheiro (chapéu em `Data/Hats`), à venda no Clint por 0g e no `pl_give`.
+- Mod: com o Capacete de Engenheiro na cabeça, colocar, retirar (com a Esteira Subterrânea ou a mão livre) e girar Esteiras Subterrâneas; o Túnel só pode ser colocado com o capacete (patch em `Object.canBePlacedHere`). As Esteiras Subterrâneas ficam no `modData` do local.
+- Mod: com o capacete na cabeça ou na mão, as Esteiras Subterrâneas e os itens nelas aparecem semitransparentes, a prévia do Túnel mostra se ele vira entrada ou saída e as descrições dos itens do mod ganham linhas técnicas (patch em `Object.getDescription`).
 
 ### Alterado
 - Interfaces: o botão OK fica no topo, ao lado do título, e a caixa se ajusta à linha mais larga (o inventário dos filtros).
@@ -60,4 +65,5 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Extrator e Inseridor unificados no Inseridor (README "Inseridores"): ele pega atrás (baú, máquina ou esteira) e entrega na frente. O placeholder passa a ser um quadrado azul com um triângulo na borda do destino.
 
 ### Removido
+- Esteira Subterrânea de vão fixo da Fase 6 (`UndergroundBeltNode`, pareamento e linha tracejada), substituída pelo Túnel com Esteiras Subterrâneas por tile. Blocos dela em saves de teste viram itens de erro do jogo.
 - Extrator (bloco, interface e `ExtractorNode`). Extratores de saves das Fases 1 e 2 viram itens de erro do jogo.

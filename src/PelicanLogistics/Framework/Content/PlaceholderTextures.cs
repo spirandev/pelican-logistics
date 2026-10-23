@@ -27,18 +27,22 @@ namespace PelicanLogistics.Framework.Content;
 /// | 6      | Esteira Expressa |
 /// | 7      | Inseridor de Pilha |
 /// | 8      | Inseridor Configurável |
-/// | 9      | Esteira Subterrânea (ícone da entrada) |
+/// | 9      | Túnel (ícone da entrada) |
 /// </code>
-/// Novos blocos acrescentam índices no fim de <see cref="Blocks"/>. A folha dos acessórios (<see cref="ObjectSheetAssetName"/>,
-/// <c>Data/Objects</c>) tem células de 16×16: 0 = Ponte, 1 = Regulador.
+/// Novos blocos acrescentam índices no fim de <see cref="Blocks"/>. A folha dos objetos comuns (<see cref="ObjectSheetAssetName"/>,
+/// <c>Data/Objects</c>) tem células de 16×16: 0 = Ponte, 1 = Regulador, 2 = Esteira Subterrânea. O Capacete de Engenheiro
+/// tem uma folha própria de chapéu (<see cref="HatSheetAssetName"/>, 20×80).
 /// </remarks>
 internal static class PlaceholderTextures
 {
     /// <summary>Nome do asset da folha de ícones usada em <c>Data/BigCraftables</c>.</summary>
     public const string IconSheetAssetName = "Mods/spirandev.PelicanLogistics/BigCraftables";
 
-    /// <summary>Nome do asset da folha de ícones dos acessórios, usada em <c>Data/Objects</c>.</summary>
+    /// <summary>Nome do asset da folha de ícones dos objetos comuns, usada em <c>Data/Objects</c>.</summary>
     public const string ObjectSheetAssetName = "Mods/spirandev.PelicanLogistics/Objects";
+
+    /// <summary>Nome do asset da folha do Capacete de Engenheiro, usada em <c>Data/Hats</c>.</summary>
+    public const string HatSheetAssetName = "Mods/spirandev.PelicanLogistics/Hats";
 
     private const int SheetColumns = 8;
     private const int CellWidth = PlaceholderPainter.SpriteSize;
@@ -56,19 +60,23 @@ internal static class PlaceholderTextures
         (ItemIds.BeltExpress, () => PlaceholderPainter.PaintBelt(BeltTier.Express)),
         (ItemIds.InserterStack, () => PlaceholderPainter.PaintInserter(TransferTier.Stack)),
         (ItemIds.InserterConfigurable, () => PlaceholderPainter.PaintInserter(TransferTier.Configurable)),
-        (ItemIds.UndergroundBelt, () => PlaceholderPainter.PaintUnderground(UndergroundRole.Entrance)),
+        (ItemIds.Tunnel, () => PlaceholderPainter.PaintTunnel(TunnelRole.Entrance)),
     };
 
-    /// <summary>Acessórios na ordem dos índices da folha dos acessórios.</summary>
-    private static readonly (string ItemId, AccessoryKind Kind)[] Accessories =
+    /// <summary>Objetos comuns na ordem dos índices da folha dos objetos.</summary>
+    private static readonly (string ItemId, Func<PixelBuffer> Paint)[] Objects =
     {
-        (ItemIds.Bridge, AccessoryKind.Bridge),
-        (ItemIds.Regulator, AccessoryKind.Regulator),
+        (ItemIds.Bridge, () => PlaceholderPainter.PaintAccessoryIcon(AccessoryKind.Bridge)),
+        (ItemIds.Regulator, () => PlaceholderPainter.PaintAccessoryIcon(AccessoryKind.Regulator)),
+        (ItemIds.UndergroundBelt, () => PlaceholderPainter.PaintUndergroundSegment()),
     };
 
     private static readonly Dictionary<string, Texture2D> WorldSprites = new();
     private static readonly Dictionary<(BeltTier Tier, bool FromLeft), Texture2D> BeltCurveSprites = new();
-    private static readonly Dictionary<UndergroundRole, Texture2D> UndergroundSprites = new();
+    private static readonly Dictionary<TunnelRole, Texture2D> TunnelSprites = new();
+    private static Texture2D? segmentSprite;
+    private static Texture2D? segmentCurveLeftSprite;
+    private static Texture2D? segmentCurveRightSprite;
     private static Texture2D? ghostArrow;
     private static Texture2D? pixel;
     private static Texture2D? bridgeOverlay;
@@ -86,35 +94,55 @@ internal static class PlaceholderTextures
     /// <summary>Regulador desenhado sobre o Inseridor (16×16, quadrado pequeno no canto, sem girar).</summary>
     public static Texture2D RegulatorOverlay => regulatorOverlay ??= ToTexture(PlaceholderPainter.PaintRegulator());
 
-    /// <summary>Índice do acessório na folha dos acessórios.</summary>
+    /// <summary>Índice do objeto na folha dos objetos comuns.</summary>
     public static int ObjectSpriteIndexOf(string itemId)
     {
-        int index = Array.FindIndex(Accessories, a => a.ItemId == itemId);
+        int index = Array.FindIndex(Objects, a => a.ItemId == itemId);
         if (index < 0)
-            throw new ArgumentException($"Acessório sem sprite: {itemId}.", nameof(itemId));
+            throw new ArgumentException($"Objeto sem sprite: {itemId}.", nameof(itemId));
         return index;
     }
 
-    /// <summary>Cria a folha dos acessórios (uma linha de células 16×16). Como a folha de ícones, sempre uma textura nova.</summary>
+    /// <summary>Cria a folha dos objetos comuns (uma linha de células 16×16). Como a folha de ícones, sempre uma textura nova.</summary>
     public static Texture2D BuildObjectSheet()
     {
-        var sheet = new PixelBuffer(Accessories.Length * PlaceholderPainter.SpriteSize, PlaceholderPainter.SpriteSize);
-        for (int i = 0; i < Accessories.Length; i++)
-            sheet.Blit(PlaceholderPainter.PaintAccessoryIcon(Accessories[i].Kind), i * PlaceholderPainter.SpriteSize, 0);
+        var sheet = new PixelBuffer(Objects.Length * PlaceholderPainter.SpriteSize, PlaceholderPainter.SpriteSize);
+        for (int i = 0; i < Objects.Length; i++)
+            sheet.Blit(Objects[i].Paint(), i * PlaceholderPainter.SpriteSize, 0);
 
         return ToTexture(sheet);
     }
 
-    /// <summary>Sprite de mundo da Esteira Subterrânea (16×16, apontando para o norte) pelo papel. Guardado em cache.</summary>
-    public static Texture2D GetUndergroundSprite(UndergroundRole role)
+    /// <summary>Cria a folha do Capacete de Engenheiro (20×80, formato de chapéu do jogo). Sempre uma textura nova.</summary>
+    public static Texture2D BuildHatSheet()
     {
-        if (!UndergroundSprites.TryGetValue(role, out Texture2D? texture))
+        return ToTexture(PlaceholderPainter.PaintEngineerHelmet());
+    }
+
+    /// <summary>Sprite de mundo do Túnel (16×16, apontando para o norte) pelo papel. Guardado em cache.</summary>
+    public static Texture2D GetTunnelSprite(TunnelRole role)
+    {
+        if (!TunnelSprites.TryGetValue(role, out Texture2D? texture))
         {
-            texture = ToTexture(PlaceholderPainter.PaintUnderground(role));
-            UndergroundSprites[role] = texture;
+            texture = ToTexture(PlaceholderPainter.PaintTunnel(role));
+            TunnelSprites[role] = texture;
         }
 
         return texture;
+    }
+
+    /// <summary>
+    /// Sprite da Esteira Subterrânea (16×16, apontando para o norte): reta, ou curva recebendo pelo oeste ('fromLeft') ou
+    /// pelo leste. Guardado em cache.
+    /// </summary>
+    public static Texture2D GetSegmentSprite(bool curve, bool fromLeft)
+    {
+        if (!curve)
+            return segmentSprite ??= ToTexture(PlaceholderPainter.PaintUndergroundSegment());
+
+        return fromLeft
+            ? segmentCurveLeftSprite ??= ToTexture(PlaceholderPainter.PaintUndergroundSegmentCurve(true))
+            : segmentCurveRightSprite ??= ToTexture(PlaceholderPainter.PaintUndergroundSegmentCurve(false));
     }
 
     /// <summary>Índice do item na folha de ícones.</summary>

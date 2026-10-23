@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using PelicanLogistics.Core.Geometry;
@@ -12,9 +13,9 @@ namespace PelicanLogistics.Core.Simulation;
 public static class Topology
 {
     /// <summary>
-    /// Recalcula, nesta ordem, os pares das Esteiras Subterrâneas, o lado de entrada das esteiras, as portas dos
-    /// Divisores (dependem do lado de entrada das esteiras) e as entradas dos Inseridores, e devolve a ordem de
-    /// processamento (a entrada de uma Subterrânea entrega na saída parceira).
+    /// Recalcula, nesta ordem, o lado de entrada das esteiras e das Esteiras Subterrâneas, as portas dos Divisores
+    /// (dependem do lado de entrada das esteiras) e as entradas dos Inseridores, e devolve a ordem de processamento dos
+    /// nós das duas camadas (o Túnel liga a superfície à camada subterrânea).
     /// </summary>
     public static IReadOnlyList<LogisticsNode> Recompute(LogisticsGrid grid)
     {
@@ -22,14 +23,19 @@ public static class Topology
             .OrderBy(n => n.Position.Y)
             .ThenBy(n => n.Position.X)
             .ToList();
-
-        UndergroundPairing.Recompute(grid, nodes);
+        List<UndergroundSegmentNode> segments = grid.UndergroundNodes
+            .OrderBy(n => n.Position.Y)
+            .ThenBy(n => n.Position.X)
+            .ToList();
 
         foreach (LogisticsNode node in nodes)
         {
             if (node is BeltNode belt)
-                belt.InputSide = ComputeInputSide(grid, belt);
+                belt.InputSide = ComputeInputSide(belt, side => Provides(grid, belt, side));
         }
+
+        foreach (UndergroundSegmentNode segment in segments)
+            segment.InputSide = ComputeInputSide(segment, side => ProvidesUnderground(grid, segment, side));
 
         foreach (LogisticsNode node in nodes)
         {
@@ -43,21 +49,22 @@ public static class Topology
                 inserter.Inputs = ComputeInserterInputs(grid, inserter);
         }
 
-        return ComputeOrder(grid, nodes);
+        return ComputeOrder(grid, nodes.Concat(segments).ToList());
     }
 
     /// <summary>
     /// Lado de entrada de uma esteira (README "Regras de conexão"): reta se algo entrega por trás;
-    /// curva se nada entrega por trás e exatamente uma lateral entrega; senão reta.
+    /// curva se nada entrega por trás e exatamente uma lateral entrega; senão reta. 'provides' diz se o vizinho do
+    /// lado indicado entrega nela (na camada da esteira).
     /// </summary>
-    private static Direction ComputeInputSide(LogisticsGrid grid, BeltNode belt)
+    private static Direction ComputeInputSide(ConveyorNode belt, Func<Direction, bool> provides)
     {
         Direction back = belt.Facing.Opposite();
-        if (Provides(grid, belt, back))
+        if (provides(back))
             return back;
 
-        bool left = Provides(grid, belt, belt.Facing.CounterClockwise());
-        bool right = Provides(grid, belt, belt.Facing.Clockwise());
+        bool left = provides(belt.Facing.CounterClockwise());
+        bool right = provides(belt.Facing.Clockwise());
         if (left != right)
             return left ? belt.Facing.CounterClockwise() : belt.Facing.Clockwise();
 
@@ -65,10 +72,23 @@ public static class Topology
     }
 
     /// <summary>
+    /// True se o vizinho do lado indicado entrega na Esteira Subterrânea: outra Esteira Subterrânea cuja frente é este
+    /// tile, ou a entrada de um Túnel (na superfície do tile vizinho) cuja frente é este tile.
+    /// </summary>
+    private static bool ProvidesUnderground(LogisticsGrid grid, UndergroundSegmentNode segment, Direction side)
+    {
+        TilePos pos = segment.Position.Offset(side);
+        if (grid.GetUnderground(pos) is { } neighbor && neighbor.ProvidesTo(segment.Position))
+            return true;
+
+        return grid.Get(pos) is TunnelNode { Role: TunnelRole.Entrance } tunnel && tunnel.FrontPosition == segment.Position;
+    }
+
+    /// <summary>
     /// Portas de um Divisor (plano mestre D4), em ordem horária N → E → S → W. Entrada se o vizinho (esteira, filtro,
-    /// Inseridor ou saída de Subterrânea) entrega no Divisor; saída se o vizinho recebe pelo lado virado para o Divisor
+    /// Inseridor ou saída de Túnel) entrega no Divisor; saída se o vizinho recebe pelo lado virado para o Divisor
     /// (uma esteira com o Divisor atrás, ou sem nada atrás e com o Divisor na lateral, que vira curva; um filtro,
-    /// Inseridor ou entrada de Subterrânea com a traseira virada para ele). Dois Divisores encostados não se conectam,
+    /// Inseridor ou entrada de Túnel com a traseira virada para ele). Dois Divisores encostados não se conectam,
     /// nem um Inseridor com o Divisor na lateral.
     /// </summary>
     private static void ComputeSplitterPorts(LogisticsGrid grid, SplitterNode splitter)
@@ -81,13 +101,13 @@ public static class Topology
             if (neighbor is null or SplitterNode)
                 continue;
 
-            // Lado por onde o vizinho recebe; null se ele não recebe de vizinhos (saída de Subterrânea).
+            // Lado por onde o vizinho recebe; null se ele não recebe de vizinhos da superfície (saída de Túnel).
             Direction? neighborInput = neighbor switch
             {
                 BeltNode belt => belt.InputSide,
                 FilterNode filter => filter.InputSide,
                 InserterNode inserter => inserter.Facing.Opposite(),
-                UndergroundBeltNode { Role: UndergroundRole.Entrance } entrance => entrance.InputSide,
+                TunnelNode { Role: TunnelRole.Entrance } entrance => entrance.InputSide,
                 _ => null,
             };
 
@@ -104,7 +124,7 @@ public static class Topology
     /// <summary>
     /// Entradas de um Inseridor (README "Inseridores"), em ordem horária N → E → S → W: a traseira sempre (pode haver
     /// baú ou máquina ali; o Core não sabe) e cada lateral com um vizinho que entrega nele (uma esteira, filtro ou saída
-    /// de Subterrânea que termina nele; outro Inseridor ou um Divisor não contam). A frente nunca.
+    /// de Túnel que termina nele; outro Inseridor ou um Divisor não contam). A frente nunca.
     /// </summary>
     private static IReadOnlyList<Direction> ComputeInserterInputs(LogisticsGrid grid, InserterNode inserter)
     {

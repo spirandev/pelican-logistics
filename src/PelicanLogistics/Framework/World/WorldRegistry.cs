@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Persistence;
 using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 using StardewModdingAPI;
@@ -85,6 +87,8 @@ internal sealed class WorldRegistry
                         count++;
                 }
 
+                // Depois dos blocos, para a regra "nada embaixo de um Túnel" valer.
+                count += this.LoadSegments(location);
                 return true;
             },
             true,   // includeInteriors: interiores de construções (celeiros, galpões, estufa...)
@@ -127,9 +131,9 @@ internal sealed class WorldRegistry
             NodeFactory.WriteFacing(obj, facing);
             NodeFactory.ResetConfig(obj);
 
-            // A Esteira Subterrânea vira entrada ou saída conforme o que já está atrás dela.
-            if (obj.ItemId == ItemIds.UndergroundBelt)
-                NodeFactory.WriteUndergroundRole(obj, UndergroundPairing.DecideRole(this.World.GetOrCreate(KeyOf(location)), ToTilePos(tile), facing));
+            // O Túnel vira entrada ou saída conforme a Esteira Subterrânea atrás dele (plano mestre D21).
+            if (obj.ItemId == ItemIds.Tunnel)
+                NodeFactory.WriteTunnelRole(obj, TunnelRules.DecideRole(this.World.GetOrCreate(KeyOf(location)), ToTilePos(tile), facing));
 
             this.TryAddNode(location, tile, obj);
         }
@@ -144,6 +148,62 @@ internal sealed class WorldRegistry
     public VirtualSlots? GetMachineSlots(GameLocation location, TilePos pos)
     {
         return this.World.Get(KeyOf(location))?.MachineSlots.Get(pos);
+    }
+
+    /// <summary>A Esteira Subterrânea do tile, ou null.</summary>
+    public UndergroundSegmentNode? GetSegment(GameLocation location, TilePos pos)
+    {
+        return this.World.Get(KeyOf(location))?.GetUnderground(pos);
+    }
+
+    /// <summary>
+    /// Cria uma Esteira Subterrânea no tile e grava o layout no <c>modData</c> do local. Retorna false se o tile já tem
+    /// uma ou tem um Túnel (as regras do mapa ficam com quem chama).
+    /// </summary>
+    public bool TryPlaceSegment(GameLocation location, TilePos pos, Direction facing)
+    {
+        string key = KeyOf(location);
+        LogisticsGrid grid = this.World.GetOrCreate(key);
+        if (!grid.CanPlaceSegment(pos))
+            return false;
+
+        grid.AddUnderground(new UndergroundSegmentNode(pos, facing));
+        this.locations[key] = location;
+        SaveSegments(location, grid);
+        return true;
+    }
+
+    /// <summary>Remove a Esteira Subterrânea, solta no chão o item que estava nela e grava o layout. Retorna false se não havia.</summary>
+    public bool RemoveSegment(GameLocation location, TilePos pos)
+    {
+        LogisticsGrid? grid = this.World.Get(KeyOf(location));
+        if (grid?.GetUnderground(pos) == null)
+            return false;
+
+        DropItems(location, ToVector(pos), grid.RemoveUnderground(pos).Items);
+        SaveSegments(location, grid);
+        return true;
+    }
+
+    /// <summary>Gira a Esteira Subterrânea no sentido horário e grava o layout. Retorna false se não havia.</summary>
+    public bool RotateSegment(GameLocation location, TilePos pos)
+    {
+        LogisticsGrid? grid = this.World.Get(KeyOf(location));
+        UndergroundSegmentNode? segment = grid?.GetUnderground(pos);
+        if (grid == null || segment == null)
+            return false;
+
+        segment.Facing = segment.Facing.Clockwise();
+        grid.MarkDirty();
+        SaveSegments(location, grid);
+        return true;
+    }
+
+    /// <summary>True se dá para colocar um Túnel no tile (não há Esteira Subterrânea embaixo, plano mestre D21).</summary>
+    public bool CanPlaceTunnel(GameLocation location, TilePos pos)
+    {
+        LogisticsGrid? grid = this.World.Get(KeyOf(location));
+        return grid == null || TunnelRules.CanPlaceTunnel(grid, pos);
     }
 
     /// <summary>O objeto do jogo no tile, ou null.</summary>
@@ -230,6 +290,51 @@ internal sealed class WorldRegistry
         grid.Add(node);
         this.RestoreAccessory(location, tile, obj, grid, pos);
         return true;
+    }
+
+    /// <summary>
+    /// Recria as Esteiras Subterrâneas do local a partir do <c>modData</c> dele (plano mestre D19). Uma posição que não
+    /// aceita mais Esteira Subterrânea (ex.: um Túnel em cima) é descartada, com aviso no log. Retorna quantas recriou.
+    /// </summary>
+    private int LoadSegments(GameLocation location)
+    {
+        if (!location.modData.TryGetValue(ModDataKeys.UndergroundSegments, out string? json))
+            return 0;
+
+        string key = KeyOf(location);
+        LogisticsGrid grid = this.World.GetOrCreate(key);
+        int created = 0;
+        int skipped = 0;
+        foreach ((TilePos pos, Direction facing) in UndergroundLayoutSerializer.Deserialize(json))
+        {
+            if (!grid.CanPlaceSegment(pos))
+            {
+                skipped++;
+                continue;
+            }
+
+            grid.AddUnderground(new UndergroundSegmentNode(pos, facing));
+            created++;
+        }
+
+        if (created > 0)
+            this.locations[key] = location;
+        if (skipped > 0)
+        {
+            this.monitor.Log($"{skipped} Esteira(s) Subterrânea(s) inválida(s) em {key} foram descartadas.", LogLevel.Warn);
+            SaveSegments(location, grid);
+        }
+
+        return created;
+    }
+
+    /// <summary>Grava as Esteiras Subterrâneas da grade no <c>modData</c> do local (sem nenhuma, apaga a chave).</summary>
+    private static void SaveSegments(GameLocation location, LogisticsGrid grid)
+    {
+        if (grid.UndergroundNodes.Any())
+            location.modData[ModDataKeys.UndergroundSegments] = UndergroundLayoutSerializer.Serialize(grid);
+        else
+            location.modData.Remove(ModDataKeys.UndergroundSegments);
     }
 
     /// <summary>Coloca no nó recém-criado o acessório gravado no <c>modData</c> (ao carregar o save).</summary>
