@@ -33,7 +33,8 @@ Cada fase é executada **do início ao fim em uma única sessão**, numa branch 
 | 5 | [`fase-5-roteamento.md`](fase-5-roteamento.md) | Filtro Comum, Filtro Completo, filtro acoplado, Divisor | 4 |
 | 6 | [`fase-6-itens-restantes.md`](fase-6-itens-restantes.md) | Ponte, Esteiras Rápida/Expressa, Inseridores de Pilha/Configurável, Esteira Subterrânea, Regulador | 5 |
 | 6b | [`fase-6b-tuneis.md`](fase-6b-tuneis.md) | Túnel (entrada/saída) + Esteiras Subterrâneas por tile, embaixo da terra; Capacete de Engenheiro | 6 |
-| 7 | [`fase-7-dicas-e-alpha.md`](fase-7-dicas-e-alpha.md) | Dicas ao passar o mouse, revisão das interfaces, empacotamento da alpha 0.1.0 | 6b |
+| 6c | [`fase-6c-roteamento-subterraneo.md`](fase-6c-roteamento-subterraneo.md) | Divisor, Filtro Comum e Filtro Completo Subterrâneos | 6b |
+| 7 | [`fase-7-dicas-e-alpha.md`](fase-7-dicas-e-alpha.md) | Dicas ao passar o mouse, revisão das interfaces, empacotamento da alpha 0.1.0 | 6c |
 
 As fases 0 a 2 foram feitas com dois blocos separados (Extrator e Inseridor); seus planos ficam como registro histórico. A partir da Fase 3 existe só o Inseridor (README "Inseridores"). A Esteira Subterrânea de vão fixo da Fase 6 é substituída na Fase 6b pelo Túnel com Esteiras Subterrâneas por tile (README "Túnel e Esteira Subterrânea").
 
@@ -91,7 +92,7 @@ Namespaces e responsabilidades (criados aos poucos pelas fases):
 | `Items` | `ILogisticsItem` (abstração de um item do jogo) |
 | `Endpoints` | `IChestEndpoint`, `IMachineEndpoint`, `IEndpointProvider` (o que está ao redor das esteiras) |
 | `Nodes` | `LogisticsNode` (base), `BeltNode`, `InserterNode`, `FilterNode`, `SplitterNode`, `TunnelNode`, `UndergroundSegmentNode` (Fase 6b; antes `UndergroundBeltNode`) |
-| `Simulation` | `LogisticsGrid` (um por local do jogo, com a camada da superfície e a subterrânea), `LogisticsWorld` (todos os locais), `Topology` (formas, conexões e ordem de processamento), `Balance` (constantes) |
+| `Simulation` | `LogisticsGrid` (um por local do jogo, com a camada da superfície e a subterrânea; na Fase 6c a camada subterrânea passa a aceitar também Filtros e Divisores), `LogisticsWorld` (todos os locais), `Topology` (formas, conexões e ordem de processamento), `Balance` (constantes) |
 | `Filters` | `IFilterRule`, `CommonFilterRule`, `CompleteFilterRule` |
 | `Regulators` | `RegulatorMode`, `RegulatorRule`, `RegulatorRuleSerializer` (Fase 6) |
 | `Machines` | `VirtualSlots`, requisitos de máquina |
@@ -180,6 +181,8 @@ O README define o comportamento. Algumas situações não estão cobertas por el
 | D19 | Camada subterrânea | As Esteiras Subterrâneas **não são objetos do jogo**: o tile continua livre (plantar, caminho, cerca, construção). Ficam numa segunda camada da `LogisticsGrid` e, no adaptador, no `modData` do local do jogo (`GameLocation.modData`). Só o Túnel liga as duas camadas. |
 | D20 | Retirar Esteira Subterrânea | Com o capacete na cabeça: segurando uma Esteira Subterrânea, o botão de ação ou o de usar ferramenta sobre um segmento o devolve (num tile sem segmento, coloca). Com a mão livre, o botão de ação também devolve, mas só se no tile não houver objeto, móvel nem terrain feature com interação (só caminho ou grama são permitidos); assim nunca rouba o clique de uma colheita ou de um baú. |
 | D21 | Túnel | Papel fixo ao colocar: **saída** se a Esteira Subterrânea atrás dele aponta para ele; senão **entrada**. Não pode haver Esteira Subterrânea embaixo de um Túnel (nem Túnel sobre uma Esteira Subterrânea). |
+| D22 | Blocos subterrâneos | Todo bloco subterrâneo (Esteira, Divisor e Filtros Subterrâneos, Fase 6c) segue as mesmas regras: item próprio (objeto não colocável pelo jogo), só com o capacete na cabeça para colocar, retirar e configurar, um bloco subterrâneo por tile, não ocupa o tile da superfície, invisível sem o capacete, nada embaixo de um Túnel, na água ou em paredes do mapa. Comportamento igual ao do bloco da superfície correspondente (o Divisor e os Filtros são rápidos, 4 tiles/s). Na camada subterrânea, os vizinhos de um bloco são só os da mesma camada, mais os Túneis (a entrada entrega no tile à frente; a saída recebe do tile atrás). |
+| D23 | Configurar e retirar blocos subterrâneos | Segurando qualquer item subterrâneo: clique num bloco subterrâneo devolve o item daquele bloco; num tile vazio, coloca o item da mão. Mão livre (com o capacete na cabeça e nada por cima que responda ao clique, D20): num Filtro Subterrâneo abre a interface do filtro (não retira); numa Esteira ou num Divisor Subterrâneo, retira. |
 
 ---
 
