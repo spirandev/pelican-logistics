@@ -417,8 +417,8 @@ public class RuntimeStateSerializerTests
         LogisticsGrid restored = fresh.Get("Farm")!;
         for (int x = 2; x <= 4; x++)
         {
-            Assert.Same(farm.SegmentAt(x, 0).Slot.Item, restored.GetUnderground(new TilePos(x, 0))!.Slot.Item);
-            Assert.Equal(farm.SegmentAt(x, 0).Slot.Progress, restored.GetUnderground(new TilePos(x, 0))!.Slot.Progress);
+            Assert.Same(farm.SegmentAt(x, 0).Slot.Item, ((UndergroundSegmentNode)restored.GetUnderground(new TilePos(x, 0))!).Slot.Item);
+            Assert.Equal(farm.SegmentAt(x, 0).Slot.Progress, ((UndergroundSegmentNode)restored.GetUnderground(new TilePos(x, 0))!).Slot.Progress);
         }
 
         Assert.Same(farm.BeltAt(3, 0).Slot.Item, ((BeltNode)restored.Get(new TilePos(3, 0))!).Slot.Item);
@@ -491,6 +491,57 @@ public class RuntimeStateSerializerTests
             restored.Concat(orphans.Select(o => o.Item)).OrderBy(i => i.GetHashCode()));
     }
 
+    [Fact]
+    public void RoundTrip_ItemsInUndergroundFilterAndSplitter_AndSplitterPointers_SurviveInTheRightLayer()
+    {
+        var world = new LogisticsWorld();
+        var farm = new GridBuilder(world.GetOrCreate("Farm"));
+
+        // Esteira → entrada (1,0) → Divisor Subterrâneo (2,0) → Filtro Subterrâneo (3,0) → Esteira Subterrânea (4,0), sem
+        // nada depois. Um Filtro da superfície vazio no mesmo tile do Filtro Subterrâneo. Qualidades diferentes para a
+        // Esteira Subterrânea não juntar as pilhas (o Filtro Comum deixa passar qualquer qualidade).
+        farm.Belt(0, 0, Direction.East).Tunnel(1, 0, Direction.East).UndergroundSplitter(2, 0)
+            .UndergroundFilter(3, 0, Direction.East, Wood).Segment(4, 0, Direction.East)
+            .Filter(3, 0, Direction.North, Wood);
+        for (int i = 0; i < 4; i++)
+        {
+            for (int tick = 0; tick < 500 && !farm.BeltAt(0, 0).Slot.IsEmpty; tick++)
+                farm.Run(1);
+            farm.Item(0, 0, new FakeItem(Wood, i + 1, quality: i), Balance.End);
+        }
+
+        farm.Run(400);
+        SplitterNode splitter = farm.UndergroundSplitterAt(2, 0);
+        FilterNode filter = farm.UndergroundFilterAt(3, 0);
+        Assert.Equal(1, farm.SegmentAt(4, 0).Slot.Item!.Count);
+        Assert.Equal(2, filter.Slot.Item!.Count);
+        Assert.Equal(3, splitter.Slot.Item!.Count);
+        Assert.Equal(4, farm.TunnelAt(1, 0).Slot.Item!.Count);
+        Assert.Equal(Direction.West, splitter.LastInput);
+        Assert.Equal(Direction.East, splitter.LastOutput);
+
+        var items = new List<ILogisticsItem>();
+        WorldRuntimeState state = RuntimeStateSerializer.Export(world, it => Register(items, it));
+        WorldRuntimeState json = JsonSerializer.Deserialize<WorldRuntimeState>(JsonSerializer.Serialize(state))!;
+        Assert.Equal(3, json.Grids["Farm"].Nodes.Count(n => n.Layer == NodeRuntimeState.UndergroundLayer));
+        LogisticsWorld fresh = EmptyCopy(world);
+        var orphans = new List<OrphanItem>();
+        RuntimeStateSerializer.Import(fresh, json, i => items[i], orphans);
+
+        Assert.Empty(orphans);
+        LogisticsGrid restored = fresh.Get("Farm")!;
+        var restoredSplitter = Assert.IsType<SplitterNode>(restored.GetUnderground(new TilePos(2, 0)));
+        var restoredFilter = Assert.IsType<FilterNode>(restored.GetUnderground(new TilePos(3, 0)));
+        Assert.Same(splitter.Slot.Item, restoredSplitter.Slot.Item);
+        Assert.Equal(splitter.Slot.Progress, restoredSplitter.Slot.Progress);
+        Assert.True(restoredSplitter.Slot.Blocked);
+        Assert.Equal(Direction.West, restoredSplitter.LastInput);
+        Assert.Equal(Direction.East, restoredSplitter.LastOutput);
+        Assert.Same(filter.Slot.Item, restoredFilter.Slot.Item);
+        Assert.True(restoredFilter.Slot.Blocked);
+        Assert.True(((FilterNode)restored.Get(new TilePos(3, 0))!).Slot.IsEmpty);
+    }
+
     private static int Register(List<ILogisticsItem> items, ILogisticsItem item)
     {
         items.Add(item);
@@ -517,8 +568,16 @@ public class RuntimeStateSerializerTests
                 });
             }
 
-            foreach (UndergroundSegmentNode segment in grid.UndergroundNodes)
-                target.AddUnderground(new UndergroundSegmentNode(segment.Position, segment.Facing));
+            foreach (LogisticsNode node in grid.UndergroundNodes)
+            {
+                target.AddUnderground(node switch
+                {
+                    UndergroundSegmentNode segment => new UndergroundSegmentNode(segment.Position, segment.Facing),
+                    FilterNode filter => new FilterNode(filter.Position, filter.Facing, filter.Rule),
+                    SplitterNode splitter => new SplitterNode(splitter.Position),
+                    _ => throw new InvalidOperationException($"Nó subterrâneo inesperado: {node.Kind}."),
+                });
+            }
         }
 
         return copy;

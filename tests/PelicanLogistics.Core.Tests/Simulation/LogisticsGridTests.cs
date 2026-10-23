@@ -1,3 +1,4 @@
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Machines;
 using PelicanLogistics.Core.Nodes;
@@ -362,7 +363,7 @@ public class LogisticsGridTests
     }
 
     [Fact]
-    public void CanPlaceSegment_NotOnASegmentNorUnderATunnel_UnderOtherBlocksYes()
+    public void CanPlaceUnderground_NotOnASegmentNorUnderATunnel_UnderOtherBlocksYes()
     {
         var g = new GridBuilder()
             .Segment(0, 0, Direction.East)
@@ -372,10 +373,10 @@ public class LogisticsGridTests
             .Splitter(4, 0)
             .Inserter(5, 0, Direction.East);
 
-        Assert.False(g.Grid.CanPlaceSegment(new TilePos(0, 0)));
-        Assert.False(g.Grid.CanPlaceSegment(new TilePos(1, 0)));
+        Assert.False(g.Grid.CanPlaceUnderground(new TilePos(0, 0)));
+        Assert.False(g.Grid.CanPlaceUnderground(new TilePos(1, 0)));
         foreach (int x in new[] { 2, 3, 4, 5, 6 })
-            Assert.True(g.Grid.CanPlaceSegment(new TilePos(x, 0)));
+            Assert.True(g.Grid.CanPlaceUnderground(new TilePos(x, 0)));
     }
 
     [Fact]
@@ -389,5 +390,121 @@ public class LogisticsGridTests
         world.Tick(_ => g.Endpoints);
 
         Assert.Equal(Balance.UndergroundSpeed, g.SegmentAt(0, 0).Slot.Progress);
+    }
+
+    // Camada subterrânea com Filtros e Divisores (Fase 6c).
+
+    [Fact]
+    public void AddUnderground_AcceptsSegmentFilterAndSplitter_RefusesInserterBeltAndTunnel()
+    {
+        var grid = new LogisticsGrid();
+        var segment = new UndergroundSegmentNode(new TilePos(0, 0), Direction.East);
+        var filter = new FilterNode(new TilePos(1, 0), Direction.East, new CommonFilterRule());
+        var splitter = new SplitterNode(new TilePos(2, 0));
+
+        grid.AddUnderground(segment);
+        grid.AddUnderground(filter);
+        grid.AddUnderground(splitter);
+
+        Assert.All(new LogisticsNode[] { segment, filter, splitter }, n => Assert.Equal(NodeLayer.Underground, n.Layer));
+        Assert.Same(filter, grid.GetUnderground(new TilePos(1, 0)));
+        Assert.Null(grid.Get(new TilePos(1, 0)));
+        Assert.Throws<ArgumentException>(() => grid.AddUnderground(new InserterNode(new TilePos(3, 0), Direction.East)));
+        Assert.Throws<ArgumentException>(() => grid.AddUnderground(new BeltNode(new TilePos(4, 0), Direction.East)));
+        Assert.Throws<ArgumentException>(() => grid.AddUnderground(new TunnelNode(new TilePos(5, 0), Direction.East, TunnelRole.Entrance)));
+        Assert.Throws<InvalidOperationException>(() => grid.AddUnderground(new SplitterNode(new TilePos(1, 0))));
+        Assert.Equal(3, grid.UndergroundNodes.Count());
+
+        var surface = new FilterNode(new TilePos(1, 0), Direction.East, new CommonFilterRule());
+        grid.Add(surface);
+        Assert.Equal(NodeLayer.Surface, surface.Layer);
+    }
+
+    [Fact]
+    public void CanPlaceUnderground_FalseOnAFilterOrSplitterBelowOrUnderATunnel()
+    {
+        var g = new GridBuilder()
+            .UndergroundFilter(0, 0, Direction.East, "(O)388")
+            .UndergroundSplitter(1, 0)
+            .Tunnel(2, 0, Direction.East);
+
+        Assert.False(g.Grid.CanPlaceUnderground(new TilePos(0, 0)));
+        Assert.False(g.Grid.CanPlaceUnderground(new TilePos(1, 0)));
+        Assert.False(g.Grid.CanPlaceUnderground(new TilePos(2, 0)));
+        Assert.True(g.Grid.CanPlaceUnderground(new TilePos(3, 0)));
+    }
+
+    [Fact]
+    public void SurfaceSplitterAndUndergroundSplitter_OnTheSameTile_DoNotInteract()
+    {
+        // Superfície: esteira a oeste → Divisor → esteira ao norte. Embaixo: Esteira Subterrânea a oeste → Divisor → ao sul.
+        var above = new FakeItem("above", 1);
+        var below = new FakeItem("below", 1);
+        var g = new GridBuilder()
+            .Belt(4, 5, Direction.East)
+            .Splitter(5, 5)
+            .Belt(5, 4, Direction.North)
+            .Segment(4, 5, Direction.East)
+            .UndergroundSplitter(5, 5)
+            .Segment(5, 6, Direction.South)
+            .Item(4, 5, above, Balance.End);
+        g.SegmentAt(4, 5).Slot.Put(below, Direction.West);
+        g.SegmentAt(4, 5).Slot.Advance(Balance.End);
+
+        g.Run(30);
+
+        Assert.Equal(new[] { Direction.West }, g.SplitterAt(5, 5).Inputs);
+        Assert.Equal(new[] { Direction.North }, g.SplitterAt(5, 5).Outputs);
+        Assert.Equal(new[] { Direction.West }, g.UndergroundSplitterAt(5, 5).Inputs);
+        Assert.Equal(new[] { Direction.South }, g.UndergroundSplitterAt(5, 5).Outputs);
+        Assert.Same(above, g.BeltAt(5, 4).Slot.Item);
+        Assert.Same(below, g.SegmentAt(5, 6).Slot.Item);
+    }
+
+    [Fact]
+    public void SurfaceInserter_NextToAnUndergroundFilterOrSegment_DoesNotPullFromThem()
+    {
+        var chest = new FakeChest();
+        var g = new GridBuilder()
+            .UndergroundFilter(0, 0, Direction.East, "(O)388")
+            .Segment(1, 1, Direction.North)
+            .Inserter(1, 0, Direction.East)
+            .Chest(2, 0, chest);
+        var inFilter = new FakeItem("(O)388", 1);
+        var inSegment = new FakeItem("(O)388", 1);
+        g.UndergroundFilterAt(0, 0).Slot.Put(inFilter, Direction.West);
+        g.UndergroundFilterAt(0, 0).Slot.Advance(Balance.End);
+        g.SegmentAt(1, 1).Slot.Put(inSegment, Direction.South);
+        g.SegmentAt(1, 1).Slot.Advance(Balance.End);
+
+        g.Run(120);
+
+        Assert.Same(inFilter, g.UndergroundFilterAt(0, 0).Slot.Item);
+        Assert.Same(inSegment, g.SegmentAt(1, 1).Slot.Item);
+        Assert.True(g.InserterAt(1, 0).Hand.IsEmpty);
+        Assert.Equal(0, chest.CountTotal());
+    }
+
+    [Fact]
+    public void SurfaceBelt_PointingAtAnUndergroundFilter_DoesNotDeliver_AndTheFilterDoesNotDeliverToASurfaceBelt()
+    {
+        var wood = new FakeItem("(O)388", 1);
+        var woodBelow = new FakeItem("(O)388", 1);
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .UndergroundFilter(1, 0, Direction.East, "(O)388")
+            .UndergroundFilter(0, 1, Direction.East, "(O)388")
+            .Belt(1, 1, Direction.East)
+            .Item(0, 0, wood, Balance.End);
+        g.UndergroundFilterAt(0, 1).Slot.Put(woodBelow, Direction.West);
+
+        g.Run(60);
+
+        Assert.Same(wood, g.BeltAt(0, 0).Slot.Item);
+        Assert.True(g.BeltAt(0, 0).Slot.Blocked);
+        Assert.True(g.UndergroundFilterAt(1, 0).Slot.IsEmpty);
+        Assert.Same(woodBelow, g.UndergroundFilterAt(0, 1).Slot.Item);
+        Assert.True(g.UndergroundFilterAt(0, 1).Slot.Blocked);
+        Assert.True(g.BeltAt(1, 1).Slot.IsEmpty);
     }
 }

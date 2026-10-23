@@ -43,4 +43,26 @@ public class TunnelRulesTests
         Assert.False(TunnelRules.CanPlaceTunnel(g.Grid, new TilePos(1, 0)));
         Assert.True(TunnelRules.CanPlaceTunnel(g.Grid, new TilePos(2, 0)));
     }
+
+    [Fact]
+    public void DecideRole_UndergroundFilterPointingAtTheTileOrSplitterBehind_IsExit_FilterPointingElsewhere_IsEntrance()
+    {
+        var g = new GridBuilder()
+            .UndergroundFilter(4, 0, Direction.East, "(O)388")
+            .UndergroundSplitter(4, 2)
+            .UndergroundFilter(4, 4, Direction.North, "(O)388");
+
+        Assert.Equal(TunnelRole.Exit, TunnelRules.DecideRole(g.Grid, new TilePos(5, 0), Direction.East));
+        Assert.Equal(TunnelRole.Exit, TunnelRules.DecideRole(g.Grid, new TilePos(5, 2), Direction.East));
+        Assert.Equal(TunnelRole.Entrance, TunnelRules.DecideRole(g.Grid, new TilePos(5, 4), Direction.East));
+    }
+
+    [Fact]
+    public void CanPlaceTunnel_NotOverAnUndergroundFilterOrSplitter()
+    {
+        var g = new GridBuilder().UndergroundFilter(1, 0, Direction.East, "(O)388").UndergroundSplitter(2, 0);
+
+        Assert.False(TunnelRules.CanPlaceTunnel(g.Grid, new TilePos(1, 0)));
+        Assert.False(TunnelRules.CanPlaceTunnel(g.Grid, new TilePos(2, 0)));
+    }
 }

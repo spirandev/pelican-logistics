@@ -259,4 +259,73 @@ public class FilterNodeTests
         Assert.True(complete.IsComplete);
         Assert.Equal(NodeKind.Filter, complete.Kind);
     }
+
+    // Filtro Subterrâneo (Fase 6c).
+
+    [Fact]
+    public void Underground_WoodPasses_StoneStaysOnTheSegmentBeforeTheFilter()
+    {
+        // Esteira → entrada → Esteira Subterrânea → Filtro Subterrâneo (madeira) → Esteira Subterrânea → saída → esteira.
+        var wood = new FakeItem(Wood, 2);
+        var stone = new FakeItem(Stone, 1);
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Tunnel(1, 0, Direction.East)
+            .Segment(2, 0, Direction.East)
+            .UndergroundFilter(3, 0, Direction.East, Wood)
+            .Segment(4, 0, Direction.East)
+            .Tunnel(5, 0, Direction.East)
+            .Belt(6, 0, Direction.East)
+            .Item(0, 0, wood, Balance.End);
+
+        g.Run(300);
+        Assert.Equal(TunnelRole.Exit, g.TunnelAt(5, 0).Role);
+        Assert.Same(wood, g.BeltAt(6, 0).Slot.Item);
+
+        g.Item(0, 0, stone, Balance.End).Run(300);
+
+        Assert.Same(stone, g.SegmentAt(2, 0).Slot.Item);
+        Assert.True(g.SegmentAt(2, 0).Slot.Blocked);
+        Assert.True(g.UndergroundFilterAt(3, 0).Slot.IsEmpty);
+    }
+
+    [Fact]
+    public void Underground_TunnelEntranceDeliversIntoTheFilter_AndTheFilterDeliversIntoTheTunnelExitAhead()
+    {
+        var wood = new FakeItem(Wood, 1);
+        var g = new GridBuilder()
+            .Belt(0, 0, Direction.East)
+            .Tunnel(1, 0, Direction.East)
+            .UndergroundFilter(2, 0, Direction.East, Wood)
+            .Tunnel(3, 0, Direction.East)
+            .Belt(4, 0, Direction.East)
+            .Item(0, 0, wood, Balance.End);
+
+        // Entrada (30 ticks) e filtro (15 ticks).
+        g.Run(1 + (Balance.End / Balance.UndergroundSpeed));
+        Assert.Same(wood, g.UndergroundFilterAt(2, 0).Slot.Item);
+        Assert.Equal(Direction.West, g.UndergroundFilterAt(2, 0).Slot.EntrySide);
+
+        g.Run(FilterTicks);
+        Assert.Equal(TunnelRole.Exit, g.TunnelAt(3, 0).Role);
+        Assert.Same(wood, g.TunnelAt(3, 0).Slot.Item);
+
+        g.Run(100);
+        Assert.Same(wood, g.BeltAt(4, 0).Slot.Item);
+    }
+
+    [Fact]
+    public void Underground_FilterDoesNotDeliverIntoATunnelExitFacingAnotherWay()
+    {
+        var wood = new FakeItem(Wood, 1);
+        var g = new GridBuilder()
+            .UndergroundFilter(0, 0, Direction.East, Wood)
+            .Tunnel(1, 0, Direction.North, TunnelRole.Exit);
+        g.UndergroundFilterAt(0, 0).Slot.Put(wood, Direction.West);
+
+        g.Run(60);
+
+        Assert.Same(wood, g.UndergroundFilterAt(0, 0).Slot.Item);
+        Assert.True(g.TunnelAt(1, 0).Slot.IsEmpty);
+    }
 }
