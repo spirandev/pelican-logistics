@@ -17,7 +17,7 @@ namespace PelicanLogistics.Framework.Menus;
 internal class ConfigMenu : IClickableMenu
 {
     /// <summary>Largura da coluna de uma interface de coluna única.</summary>
-    private const int SingleColumnWidth = 656;
+    protected const int SingleColumnWidth = 656;
 
     private const int Padding = 32;
     private const int TitleHeight = 72;

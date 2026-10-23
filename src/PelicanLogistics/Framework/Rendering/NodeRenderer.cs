@@ -6,6 +6,7 @@ using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
 using PelicanLogistics.Core.Rendering;
+using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Framework.Content;
 using PelicanLogistics.Framework.Input;
 using PelicanLogistics.Framework.World;
@@ -14,7 +15,10 @@ using SObject = StardewValley.Object;
 
 namespace PelicanLogistics.Framework.Rendering;
 
-/// <summary>Desenha os blocos do mod (placeholder girado), o braço do Inseridor e os itens em trânsito sobre eles.</summary>
+/// <summary>
+/// Desenha os blocos do mod (placeholder girado), o braço do Inseridor, os itens em trânsito e os acessórios (Ponte por
+/// cima do item, Regulador no canto do Inseridor).
+/// </summary>
 internal sealed class NodeRenderer
 {
     /// <summary>Escala do sprite 16×16 para o tile de 64 pixels.</summary>
@@ -29,6 +33,15 @@ internal sealed class NodeRenderer
 
     /// <summary>Ícone do item configurado no Filtro Comum: abaixo do item em trânsito.</summary>
     private const float FilterIconDepthOffset = 0.000005f;
+
+    /// <summary>Ponte: por cima do item em trânsito (README "Ponte").</summary>
+    private const float BridgeDepthOffset = 0.00002f;
+
+    /// <summary>Regulador: por cima do braço, da mão e do item na mão.</summary>
+    private const float RegulatorDepthOffset = 0.00004f;
+
+    /// <summary>Opacidade da Ponte: dá para ver o item passando por baixo.</summary>
+    private const float BridgeAlpha = 0.6f;
 
     /// <summary>Escala do ícone do item em trânsito (metade do tamanho no inventário).</summary>
     private const float ItemScale = 0.5f;
@@ -93,11 +106,15 @@ internal sealed class NodeRenderer
         // Profundidade: abaixo do jogador quando ele está ao sul do bloco. Valor a ajustar no teste local.
         float baseDepth = Math.Max(0f, y * Game1.tileSize / 10000f) + 0.0001f;
 
-        // O Divisor não tem direção: o sprite nunca gira. A esteira em curva tem um sprite próprio.
+        // O Divisor não tem direção: o sprite nunca gira. A esteira em curva e a Subterrânea têm sprites próprios.
         float rotation = ItemIds.IsDirectional(obj.ItemId) ? RotationOf(facing) : 0f;
-        Texture2D sprite = node is BeltNode { IsCurve: true } belt
-            ? PlaceholderTextures.GetBeltCurveSprite(belt.Tier, belt.InputSide == belt.Facing.CounterClockwise())
-            : PlaceholderTextures.GetWorldSprite(obj.ItemId);
+        Texture2D sprite = node switch
+        {
+            BeltNode { IsCurve: true } belt => PlaceholderTextures.GetBeltCurveSprite(belt.Tier, belt.InputSide == belt.Facing.CounterClockwise()),
+            UndergroundBeltNode underground => PlaceholderTextures.GetUndergroundSprite(underground.Role),
+            null when obj.ItemId == ItemIds.UndergroundBelt => PlaceholderTextures.GetUndergroundSprite(this.PreviewRole(location, obj, pos, facing)),
+            _ => PlaceholderTextures.GetWorldSprite(obj.ItemId),
+        };
         b.Draw(
             sprite,
             topLeft + TileCenter,
@@ -113,6 +130,19 @@ internal sealed class NodeRenderer
         {
             case InserterNode inserter:
                 DrawArm(b, topLeft, ArmMath.GetArmAngle(inserter), inserter.Hand.Item as GameItem, alpha, baseDepth);
+                if (inserter.Accessory == AccessoryKind.Regulator)
+                    DrawOverlay(b, PlaceholderTextures.RegulatorOverlay, topLeft, alpha, baseDepth + RegulatorDepthOffset);
+                break;
+
+            case UndergroundBeltNode underground:
+                // Só o slot do próprio tile aparece; o túnel é invisível.
+                DrawTransitSlot(b, underground.Slot, underground.Facing, topLeft, baseDepth);
+                break;
+
+            case BeltNode belt:
+                DrawTransitItems(b, belt, topLeft, baseDepth);
+                if (belt.Accessory == AccessoryKind.Bridge)
+                    DrawOverlay(b, PlaceholderTextures.BridgeOverlay, topLeft, alpha * BridgeAlpha, baseDepth + BridgeDepthOffset);
                 break;
 
             case SplitterNode splitter:
@@ -130,10 +160,32 @@ internal sealed class NodeRenderer
                 break;
 
             default:
-                if (obj.ItemId == ItemIds.Inserter)
+                if (ItemIds.IsInserter(obj.ItemId))
                     DrawArm(b, topLeft, ArmMath.AngleOf(facing.Opposite()), null, alpha, baseDepth); // prévia: braço parado apontando para trás
                 break;
         }
+    }
+
+    /// <summary>
+    /// Papel de uma Esteira Subterrânea sem nó: na prévia de colocação, o papel que ela teria no tile do cursor
+    /// (<see cref="UndergroundPairing.DecideRole"/>); num objeto colocado ainda sem nó, o do <c>modData</c>.
+    /// </summary>
+    private UndergroundRole PreviewRole(GameLocation? location, SObject obj, TilePos pos, Direction facing)
+    {
+        if (location == null)
+            return UndergroundRole.Entrance;
+
+        if (location.objects.TryGetValue(new Vector2(pos.X, pos.Y), out SObject? placed) && ReferenceEquals(placed, obj))
+            return NodeFactory.ReadUndergroundRole(obj);
+
+        LogisticsGrid? grid = this.registry.World.Get(WorldRegistry.KeyOf(location));
+        return grid != null ? UndergroundPairing.DecideRole(grid, pos, facing) : UndergroundRole.Entrance;
+    }
+
+    /// <summary>Desenha um sprite 16×16 de acessório sobre o tile inteiro, sem girar.</summary>
+    private static void DrawOverlay(SpriteBatch b, Texture2D overlay, Vector2 topLeft, float alpha, float depth)
+    {
+        b.Draw(overlay, topLeft + TileCenter, null, Color.White * alpha, 0f, SpriteOrigin, SpriteScale, SpriteEffects.None, depth);
     }
 
     /// <summary>Ícone de um item pelo ID, criado no primeiro uso.</summary>
@@ -162,13 +214,17 @@ internal sealed class NodeRenderer
     private static void DrawTransitItems(SpriteBatch b, LogisticsNode node, Vector2 topLeft, float baseDepth)
     {
         foreach (TransitSlot slot in node.Slots)
-        {
-            if (slot.Item is not GameItem item)
-                continue;
+            DrawTransitSlot(b, slot, node.Facing, topLeft, baseDepth);
+    }
 
-            (float px, float py) = PathMath.GetPosition(slot.EntrySide, node.Facing, slot.Progress);
-            DrawItem(b, item.Item, topLeft + new Vector2(px * Game1.tileSize, py * Game1.tileSize), ItemScale, baseDepth + ItemDepthOffset);
-        }
+    /// <summary>Item de um slot no caminho da entrada (<see cref="TransitSlot.EntrySide"/>) até a saída ('exitSide').</summary>
+    private static void DrawTransitSlot(SpriteBatch b, TransitSlot slot, Direction exitSide, Vector2 topLeft, float baseDepth)
+    {
+        if (slot.Item is not GameItem item)
+            return;
+
+        (float px, float py) = PathMath.GetPosition(slot.EntrySide, exitSide, slot.Progress);
+        DrawItem(b, item.Item, topLeft + new Vector2(px * Game1.tileSize, py * Game1.tileSize), ItemScale, baseDepth + ItemDepthOffset);
     }
 
     /// <summary>Braço do Inseridor: traço escuro do centro até a mão, a mão e o item que ela carrega (README "Placeholders visuais").</summary>

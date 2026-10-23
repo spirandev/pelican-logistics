@@ -2,11 +2,16 @@ using System;
 using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 using SObject = StardewValley.Object;
 
 namespace PelicanLogistics.Framework.World;
 
 /// <summary>Cria os nós do Core a partir dos objetos do jogo e lê/grava a configuração no <c>modData</c>.</summary>
+/// <remarks>
+/// O acessório (Ponte, Regulador) não é aplicado aqui: o <see cref="WorldRegistry"/> o coloca pela grade
+/// (<c>LogisticsGrid.TrySetAccessory</c>), que valida o tipo do bloco.
+/// </remarks>
 internal static class NodeFactory
 {
     /// <summary>Direção usada quando o objeto não tem direção gravada.</summary>
@@ -19,14 +24,15 @@ internal static class NodeFactory
         return obj.ItemId switch
         {
             ItemIds.Belt => new BeltNode(pos, facing, BeltTier.Basic),
-            ItemIds.Inserter => new InserterNode(pos, facing, TransferTier.Single)
-            {
-                Source = ReadPickupSource(obj),
-                SlotMode = ReadInserterSlotMode(obj),
-            },
+            ItemIds.BeltFast => new BeltNode(pos, facing, BeltTier.Fast),
+            ItemIds.BeltExpress => new BeltNode(pos, facing, BeltTier.Express),
+            ItemIds.Inserter => CreateInserter(obj, pos, facing, TransferTier.Single),
+            ItemIds.InserterStack => CreateInserter(obj, pos, facing, TransferTier.Stack),
+            ItemIds.InserterConfigurable => CreateInserter(obj, pos, facing, TransferTier.Configurable),
             ItemIds.FilterCommon => new FilterNode(pos, facing, ReadCommonFilterRule(obj)),
             ItemIds.FilterComplete => new FilterNode(pos, facing, ReadCompleteFilterRule(obj)),
             ItemIds.Splitter => new SplitterNode(pos),
+            ItemIds.UndergroundBelt => new UndergroundBeltNode(pos, facing, ReadUndergroundRole(obj)),
             _ => null,
         };
     }
@@ -61,6 +67,64 @@ internal static class NodeFactory
         obj.modData[ModDataKeys.InserterSlotMode] = mode.ToString();
     }
 
+    /// <summary>Quantidade por operação do Inseridor Configurável; ausente ou inválida → 1. O nó limita a 1..999.</summary>
+    public static int ReadConfiguredAmount(SObject obj)
+    {
+        return int.TryParse(ReadRaw(obj, ModDataKeys.ConfiguredAmount), out int amount) ? amount : 1;
+    }
+
+    public static void WriteConfiguredAmount(SObject obj, int amount)
+    {
+        obj.modData[ModDataKeys.ConfiguredAmount] = amount.ToString();
+    }
+
+    /// <summary>Papel da Esteira Subterrânea; ausente ou inválido → entrada.</summary>
+    public static UndergroundRole ReadUndergroundRole(SObject obj)
+    {
+        return ReadEnum(obj, ModDataKeys.UndergroundRole, UndergroundRole.Entrance);
+    }
+
+    public static void WriteUndergroundRole(SObject obj, UndergroundRole role)
+    {
+        obj.modData[ModDataKeys.UndergroundRole] = role.ToString();
+    }
+
+    /// <summary>Acessório gravado no bloco; ausente ou inválido → nenhum.</summary>
+    public static AccessoryKind ReadAccessory(SObject obj)
+    {
+        return ReadEnum(obj, ModDataKeys.Accessory, AccessoryKind.None);
+    }
+
+    /// <summary>Grava o acessório e, para o Regulador, a regra.</summary>
+    public static void WriteAccessory(SObject obj, AccessoryKind kind, RegulatorRule? regulator)
+    {
+        ClearAccessory(obj);
+        if (kind == AccessoryKind.None)
+            return;
+
+        obj.modData[ModDataKeys.Accessory] = kind.ToString();
+        if (regulator != null)
+            WriteRegulatorRule(obj, regulator);
+    }
+
+    /// <summary>Apaga o acessório e a regra do Regulador.</summary>
+    public static void ClearAccessory(SObject obj)
+    {
+        obj.modData.Remove(ModDataKeys.Accessory);
+        obj.modData.Remove(ModDataKeys.RegulatorRule);
+    }
+
+    /// <summary>Regra do Regulador; ausente ou inválida → regra padrão (Geral, 100).</summary>
+    public static RegulatorRule ReadRegulatorRule(SObject obj)
+    {
+        return RegulatorRuleSerializer.Deserialize(ReadRaw(obj, ModDataKeys.RegulatorRule));
+    }
+
+    public static void WriteRegulatorRule(SObject obj, RegulatorRule rule)
+    {
+        obj.modData[ModDataKeys.RegulatorRule] = RegulatorRuleSerializer.Serialize(rule);
+    }
+
     /// <summary>Regra do Filtro Comum; ausente ou inválida → filtro vazio (não deixa passar nada).</summary>
     public static CommonFilterRule ReadCommonFilterRule(SObject obj)
     {
@@ -86,6 +150,16 @@ internal static class NodeFactory
     {
         foreach (string key in ModDataKeys.Config)
             obj.modData.Remove(key);
+    }
+
+    private static InserterNode CreateInserter(SObject obj, TilePos pos, Direction facing, TransferTier tier)
+    {
+        return new InserterNode(pos, facing, tier)
+        {
+            Source = ReadPickupSource(obj),
+            SlotMode = ReadInserterSlotMode(obj),
+            ConfiguredAmount = ReadConfiguredAmount(obj),
+        };
     }
 
     private static string? ReadRaw(SObject obj, string key)

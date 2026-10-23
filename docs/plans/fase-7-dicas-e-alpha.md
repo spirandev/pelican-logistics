@@ -4,12 +4,12 @@
 
 - **Branch:** `fase-7-dicas-e-alpha`
 - **PR:** `Fase 7: Dicas e alpha 0.1.0`
-- **Depende de:** Fase 6 mesclada.
+- **Depende de:** Fase 6b mesclada.
 
 ## Objetivo
 
 Fechar a alpha:
-1. **Dicas ao passar o mouse** nas esteiras, nos blocos e nas máquinas (README: a quantidade só aparece ao passar o mouse).
+1. **Dicas ao passar o mouse** nas esteiras, nos blocos e nas máquinas (README: a quantidade só aparece ao passar o mouse). Os slots das máquinas e as Esteiras Subterrâneas só com o Capacete de Engenheiro ativo (plano mestre D18).
 2. **Modo de depuração** visual para ajudar nos testes.
 3. **Revisão** das interfaces, textos e documentação.
 4. **Preparar a versão 0.1.0-alpha** para distribuição aos testadores.
@@ -33,7 +33,7 @@ public sealed record TooltipModel(string TitleKey, IReadOnlyList<TooltipLine> Li
 
 public static class TooltipBuilder
 {
-    public static TooltipModel? ForNode(LogisticsNode node);
+    public static TooltipModel? ForNode(LogisticsNode node);   // também para UndergroundSegmentNode
     public static TooltipModel? ForMachine(VirtualSlots slots, IMachineEndpoint machine);
 }
 ```
@@ -47,8 +47,9 @@ Conteúdo (as chaves são do i18n):
 | Filtro Completo | "Filtro Completo" | modo; resumo ("3 itens, 2 categorias, qualidade ouro"); item em trânsito |
 | Divisor | "Divisor" | número de entradas e saídas; item em trânsito; "Sem destino" se bloqueado |
 | Inseridor | nome do tier | "Retirar de" e "Colocar em"; item na mão; quantidade se Configurável; regulador e limite se houver |
-| Subterrânea | "Entrada"/"Saída" | pareada ou "Sem par"; itens no túnel (entrada) |
-| Máquina com slots virtuais | nome da máquina (o adaptador preenche) | `Principal: 3/5 Minério de cobre`; uma linha por adicional `Adicional: 1/1 Carvão` |
+| Túnel | "Entrada"/"Saída" | item em trânsito; na entrada, "Sem Esteira Subterrânea à frente" se for o caso |
+| Esteira Subterrânea (só com o capacete) | "Esteira Subterrânea" | item em trânsito e quantidade, ou "vazia"; "Bloqueada" se `Blocked` |
+| Máquina com slots virtuais (só com o capacete) | nome da máquina (o adaptador preenche) | `Principal: 3/5 Minério de cobre`; uma linha por adicional `Adicional: 1/1 Carvão` |
 
 Itens são referenciados nas linhas pelo `DisplayName` e pela quantidade nos `Args`.
 
@@ -57,7 +58,7 @@ Itens são referenciados nas linhas pelo `DisplayName` e pela quantidade nos `Ar
 1. Esteira vazia, com item, bloqueada e com ponte geram as linhas certas.
 2. Fornalha com Principal 3/5 e Adicional 0/1 gera duas linhas com os números certos.
 3. Inseridor Configurável com Regulador mostra quantidade e limite.
-4. Subterrânea sem par mostra "Sem par".
+4. Entrada de Túnel sem Esteira Subterrânea à frente mostra o aviso; segmento bloqueado mostra "Bloqueada".
 5. Máquina sem slots virtuais (`slots == null` ou vazio): sem dica do mod (`null`).
 
 ### A3. Teste de carga
@@ -72,8 +73,9 @@ Um teste que monta **10.000 nós** (linhas longas, curvas, Divisores) e roda **6
 
 - `Display.RenderedHud`: se não há menu aberto (`Game1.activeClickableMenu == null`) e o jogo está carregado:
   - tile do cursor (`Helper.Input.GetCursorPosition().Tile`) no local atual;
-  - nó nosso no tile → `TooltipBuilder.ForNode`;
-  - senão, máquina com slots virtuais não vazios → `TooltipBuilder.ForMachine`, com o título = `DisplayName` da máquina;
+  - nó nosso no tile (superfície) → `TooltipBuilder.ForNode`;
+  - senão, com o capacete ativo (`EngineerHelmet.IsActive`), máquina com slots virtuais não vazios → `TooltipBuilder.ForMachine`, com o título = `DisplayName` da máquina;
+  - senão, com o capacete ativo, segmento no tile → `TooltipBuilder.ForNode` do segmento;
   - traduz com `Helper.Translation.Get(key, args)` e desenha com `IClickableMenu.drawHoverText(b, texto, Game1.smallFont, …)` junto ao cursor.
 - Não mostrar a dica do mod ao mesmo tempo que outra dica do jogo para o mesmo objeto, se isso causar sobreposição; registre no PR como ficou.
 
@@ -84,7 +86,7 @@ Um teste que monta **10.000 nós** (linhas longas, curvas, Divisores) e roda **6
   - seta pequena indicando o `InputSide` das esteiras;
   - quadrado vermelho translúcido nos slots `Blocked`;
   - nos Divisores, marcas verdes nas entradas e azuis nas saídas;
-  - linha entre Subterrâneas pareadas.
+  - as Esteiras Subterrâneas e o lado de entrada de cada uma, mesmo sem o capacete.
 
 ### B3. Revisão das interfaces
 
@@ -142,13 +144,13 @@ Liste no PR tudo que foi corrigido.
 ## Verificação local (usuário)
 
 - [ ] Passar o mouse numa esteira com itens mostra `Madeira ×50`; numa vazia mostra "vazia"; numa travada mostra "Bloqueada".
-- [ ] Passar o mouse numa fornalha abastecida mostra `Principal: 3/5 Minério de cobre` e `Adicional: 1/1 Carvão`.
-- [ ] Dicas de Inseridor (com e sem Regulador), Filtros, Divisor e Subterrânea mostram as informações da tabela.
+- [ ] Com o Capacete de Engenheiro, passar o mouse numa fornalha abastecida mostra `Principal: 3/5 Minério de cobre` e `Adicional: 1/1 Carvão`; sem o capacete, não mostra nada.
+- [ ] Dicas de Inseridor (com e sem Regulador), Filtros, Divisor e Túnel mostram as informações da tabela; a da Esteira Subterrânea só aparece com o capacete.
 - [ ] Nenhuma dica aparece com um menu aberto.
 - [ ] `pl_debug` mostra setas de entrada, bloqueios em vermelho e portas do Divisor.
 - [ ] Todas as interfaces têm o mesmo estilo, fecham com Esc e cabem na tela.
 - [ ] Todos os textos estão em pt-BR correto.
 - [ ] `dotnet build src/PelicanLogistics -c Release` gera o zip; instalar o zip numa pasta `Mods` limpa funciona.
 - [ ] **Teste de desempenho:** uma fazenda com ~500 esteiras ativas não causa queda perceptível de FPS. Anote o resultado no `STATUS.md`.
-- [ ] Jogar um dia inteiro com uma fábrica completa (fornalha, barris, separador com Divisor, subterrânea, regulador), dormir, salvar e carregar: tudo continua funcionando e nada se perdeu.
+- [ ] Jogar um dia inteiro com uma fábrica completa (fornalha, barris, separador com Divisor, túnel, regulador), dormir, salvar e carregar: tudo continua funcionando e nada se perdeu.
 - [ ] Nenhum erro do mod no log do SMAPI.

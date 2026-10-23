@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Framework.Menus;
 using PelicanLogistics.Framework.World;
 using StardewModdingAPI;
@@ -49,22 +50,9 @@ internal sealed class BlockMenuController
         switch (obj.ItemId)
         {
             case ItemIds.Inserter:
-                return new InserterMenu(
-                    i18n,
-                    NodeFactory.ReadPickupSource(obj),
-                    source =>
-                    {
-                        NodeFactory.WritePickupSource(obj, source);
-                        if (this.registry.GetNode(location, pos) is InserterNode inserter)
-                            inserter.Source = source;
-                    },
-                    NodeFactory.ReadInserterSlotMode(obj),
-                    mode =>
-                    {
-                        NodeFactory.WriteInserterSlotMode(obj, mode);
-                        if (this.registry.GetNode(location, pos) is InserterNode inserter)
-                            inserter.SlotMode = mode;
-                    });
+            case ItemIds.InserterStack:
+            case ItemIds.InserterConfigurable:
+                return this.CreateInserterMenu(location, obj, pos);
 
             case ItemIds.FilterCommon:
                 return new CommonFilterMenu(
@@ -81,6 +69,78 @@ internal sealed class BlockMenuController
             default:
                 return null;
         }
+    }
+
+    /// <summary>Interface do Inseridor: "Retirar de", "Colocar em", a quantidade (Configurável) e a seção do Regulador, se houver.</summary>
+    private InserterMenu CreateInserterMenu(GameLocation location, SObject obj, TilePos pos)
+    {
+        InserterNode? node = this.registry.GetNode(location, pos) as InserterNode;
+        return new InserterMenu(this.helper.Translation, new InserterMenuOptions
+        {
+            Source = NodeFactory.ReadPickupSource(obj),
+            OnSourceChanged = source =>
+            {
+                NodeFactory.WritePickupSource(obj, source);
+                if (this.registry.GetNode(location, pos) is InserterNode inserter)
+                    inserter.Source = source;
+            },
+            SlotMode = NodeFactory.ReadInserterSlotMode(obj),
+            OnSlotModeChanged = mode =>
+            {
+                NodeFactory.WriteInserterSlotMode(obj, mode);
+                if (this.registry.GetNode(location, pos) is InserterNode inserter)
+                    inserter.SlotMode = mode;
+            },
+            ConfiguredAmount = obj.ItemId == ItemIds.InserterConfigurable ? node?.ConfiguredAmount ?? NodeFactory.ReadConfiguredAmount(obj) : null,
+            OnAmountChanged = amount =>
+            {
+                NodeFactory.WriteConfiguredAmount(obj, amount);
+                if (this.registry.GetNode(location, pos) is InserterNode inserter)
+                    inserter.ConfiguredAmount = amount;
+            },
+            Regulator = node?.Regulator,
+            OnRegulatorChanged = () => this.registry.SaveRegulatorRule(location, pos),
+            Reopen = () => this.Show(this.CreateInserterMenu(location, obj, pos)),
+            OnAddRegulatorItem = () => this.Show(this.CreateRegulatorItemPicker(location, obj, pos)),
+            OnRemoveRegulator = () =>
+            {
+                if (this.registry.RemoveAccessory(location, pos) == AccessoryKind.Regulator)
+                    AccessoryController.GiveToPlayer(ItemIds.CreateAccessory(AccessoryKind.Regulator));
+                this.Show(this.CreateInserterMenu(location, obj, pos));
+            },
+        });
+    }
+
+    /// <summary>Escolha do item a limitar: o item entra na lista com o limite padrão, e a interface do Inseridor volta.</summary>
+    private RegulatorItemPickerMenu CreateRegulatorItemPicker(GameLocation location, SObject obj, TilePos pos)
+    {
+        return new RegulatorItemPickerMenu(
+            this.helper.Translation,
+            id =>
+            {
+                if (this.registry.GetNode(location, pos) is InserterNode { Regulator: { } rule }
+                    && !rule.PerItemLimits.ContainsKey(id)
+                    && rule.PerItemLimits.Count < InserterMenu.MaxRegulatorItems)
+                {
+                    rule.PerItemLimits[id] = Balance.RegulatorDefaultLimit;
+                    this.registry.SaveRegulatorRule(location, pos);
+                    Game1.playSound("smallSelect");
+                }
+                else
+                {
+                    Game1.playSound("cancel");
+                }
+
+                this.Show(this.CreateInserterMenu(location, obj, pos));
+            },
+            () => this.Show(this.CreateInserterMenu(location, obj, pos)));
+    }
+
+    /// <summary>Troca a interface aberta por outra (fecha a atual antes, para ela gravar o que estiver pendente).</summary>
+    private void Show(IClickableMenu menu)
+    {
+        Game1.activeClickableMenu?.exitThisMenuNoSound();
+        Game1.activeClickableMenu = menu;
     }
 
     /// <summary>Grava a regra no <c>modData</c> e a aplica na hora ao nó do filtro.</summary>

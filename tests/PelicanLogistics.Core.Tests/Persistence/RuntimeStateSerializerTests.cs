@@ -383,6 +383,49 @@ public class RuntimeStateSerializerTests
     }
 
     [Fact]
+    public void RoundTrip_ItemsInsideTheUndergroundTunnel_SurviveAndKeepMoving()
+    {
+        var world = new LogisticsWorld();
+        var farm = new GridBuilder(world.GetOrCreate("Farm"));
+
+        // Entrada (1,0), saída (5,0): túnel de 3 tiles, nada depois da saída. Cinco pilhas: saída, túnel cheio e entrada.
+        farm.Belt(0, 0, Direction.East).Underground(1, 0, Direction.East).Underground(5, 0, Direction.East);
+        for (int i = 0; i < 5; i++)
+        {
+            for (int tick = 0; tick < 500 && !farm.BeltAt(0, 0).Slot.IsEmpty; tick++)
+                farm.Run(1);
+            farm.Item(0, 0, new FakeItem($"item{i + 1}", 1), Balance.End);
+        }
+
+        farm.Run(300);
+        UndergroundBeltNode entrance = farm.UndergroundAt(1, 0);
+        Assert.All(entrance.Tunnel.Take(3), s => Assert.NotNull(s.Item));
+        Assert.Equal(1 + Balance.UndergroundMaxGap, entrance.Slots.Count());
+
+        var items = new List<ILogisticsItem>();
+        WorldRuntimeState state = RuntimeStateSerializer.Export(world, it => Register(items, it));
+        WorldRuntimeState json = JsonSerializer.Deserialize<WorldRuntimeState>(JsonSerializer.Serialize(state))!;
+        LogisticsWorld fresh = EmptyCopy(world);
+        var orphans = new List<OrphanItem>();
+        RuntimeStateSerializer.Import(fresh, json, i => items[i], orphans);
+
+        Assert.Empty(orphans);
+        var restored = Assert.IsType<UndergroundBeltNode>(fresh.Get("Farm")!.Get(new TilePos(1, 0)));
+        var restoredExit = Assert.IsType<UndergroundBeltNode>(fresh.Get("Farm")!.Get(new TilePos(5, 0)));
+        Assert.Equal(entrance.Slots.Select(s => s.Item), restored.Slots.Select(s => s.Item));
+        Assert.Equal(entrance.Slots.Select(s => s.Progress), restored.Slots.Select(s => s.Progress));
+        Assert.Same(farm.UndergroundAt(5, 0).Slot.Item, restoredExit.Slot.Item);
+
+        // Depois de carregar, liberar a saída faz a fila andar, na mesma ordem.
+        var after = new GridBuilder(fresh.Get("Farm"));
+        after.Belt(6, 0, Direction.East).Belt(7, 0, Direction.East).Belt(8, 0, Direction.East).Belt(9, 0, Direction.East).Belt(10, 0, Direction.East);
+        after.Run(500);
+        Assert.Equal(
+            new[] { "item1", "item2", "item3", "item4", "item5" },
+            Enumerable.Range(6, 5).Reverse().Select(x => after.BeltAt(x, 0).Slot.Item!.QualifiedItemId));
+    }
+
+    [Fact]
     public void ExportAndImport_ConserveItems()
     {
         var world = new LogisticsWorld();
@@ -439,6 +482,7 @@ public class RuntimeStateSerializerTests
                     InserterNode inserter => new InserterNode(inserter.Position, inserter.Facing, inserter.Tier),
                     FilterNode filter => new FilterNode(filter.Position, filter.Facing, filter.Rule),
                     SplitterNode splitter => new SplitterNode(splitter.Position),
+                    UndergroundBeltNode underground => new UndergroundBeltNode(underground.Position, underground.Facing, underground.Role),
                     _ => throw new InvalidOperationException($"Nó inesperado: {node.Kind}."),
                 });
             }

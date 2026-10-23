@@ -126,6 +126,77 @@ public static class PlaceholderPainter
         return buffer;
     }
 
+    /// <summary>
+    /// Esteira Subterrânea: quadrado cinza escuro com uma seta branca pequena na borda de cima (o sentido) e um círculo
+    /// branco (entrada) ou preto (saída) com contorno.
+    /// </summary>
+    public static PixelBuffer PaintUnderground(UndergroundRole role)
+    {
+        Rgba circle = role switch
+        {
+            UndergroundRole.Entrance => PlaceholderColors.Mark,
+            UndergroundRole.Exit => PlaceholderColors.UndergroundExit,
+            _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Papel inválido."),
+        };
+
+        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+        buffer.FillRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Underground);
+        buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
+        buffer.DrawArrow(8, 2, Direction.North, PlaceholderColors.Mark);
+        buffer.FillCircle(8.5f, 9f, 5f, PlaceholderColors.Outline);
+        buffer.FillCircle(8.5f, 9f, 4f, circle);
+        return buffer;
+    }
+
+    /// <summary>
+    /// Ponte: faixa horizontal marrom (linhas 4 a 11) com juntas entre as tábuas, em fundo transparente. Desenhada por
+    /// cima da esteira e do item, sem girar.
+    /// </summary>
+    public static PixelBuffer PaintBridge()
+    {
+        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+        buffer.FillRect(0, 4, SpriteSize, 8, PlaceholderColors.Bridge);
+        buffer.FillRect(0, 4, SpriteSize, 1, PlaceholderColors.BridgeJoint);
+        buffer.FillRect(0, 11, SpriteSize, 1, PlaceholderColors.BridgeJoint);
+        for (int x = 3; x < SpriteSize; x += 4)
+            buffer.FillRect(x, 5, 1, 6, PlaceholderColors.BridgeJoint);
+        return buffer;
+    }
+
+    /// <summary>Regulador sobre o Inseridor: quadrado amarelo pequeno (6×6, com contorno) no canto inferior direito, em fundo transparente.</summary>
+    public static PixelBuffer PaintRegulator()
+    {
+        var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+        buffer.FillRect(9, 9, 6, 6, PlaceholderColors.Regulator);
+        buffer.DrawRect(9, 9, 6, 6, PlaceholderColors.Outline);
+        return buffer;
+    }
+
+    /// <summary>
+    /// Ícone de inventário (16×16) de um acessório: a Ponte é a mesma faixa desenhada sobre a esteira; o Regulador, um
+    /// quadrado amarelo grande com contorno e um traço de "limite" no meio.
+    /// </summary>
+    public static PixelBuffer PaintAccessoryIcon(AccessoryKind kind)
+    {
+        switch (kind)
+        {
+            case AccessoryKind.Bridge:
+                return PaintBridge();
+
+            case AccessoryKind.Regulator:
+            {
+                var buffer = new PixelBuffer(SpriteSize, SpriteSize);
+                buffer.FillRect(2, 2, 12, 12, PlaceholderColors.Regulator);
+                buffer.DrawRect(2, 2, 12, 12, PlaceholderColors.Outline);
+                buffer.FillRect(5, 7, 6, 2, PlaceholderColors.Outline);
+                return buffer;
+            }
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(kind), kind, "Acessório sem ícone.");
+        }
+    }
+
     /// <summary>Seta grande branca apontando para cima, em fundo transparente (seta fantasma de colocação).</summary>
     public static PixelBuffer PaintGhostArrow()
     {

@@ -29,8 +29,8 @@ public abstract class LogisticsNode
 
     public abstract NodeKind Kind { get; }
 
-    /// <summary>Acessório sobre o bloco (usado a partir da Fase 5).</summary>
-    public AccessoryKind Accessory { get; set; } = AccessoryKind.None;
+    /// <summary>Acessório sobre o bloco. Só muda por <see cref="LogisticsGrid.TrySetAccessory"/> e <see cref="LogisticsGrid.RemoveAccessory"/>.</summary>
+    public AccessoryKind Accessory { get; internal set; } = AccessoryKind.None;
 
     /// <summary>Todos os espaços do nó. Usado no desenho, na persistência e na remoção.</summary>
     public virtual IEnumerable<TransitSlot> Slots => Array.Empty<TransitSlot>();

@@ -1,6 +1,7 @@
 using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Nodes;
+using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 using PelicanLogistics.Core.Tests.Fakes;
 
@@ -272,6 +273,59 @@ public class FullFlowTests
         Assert.Equal(wood, g.FilterAt(5, 4).Slot.Item!.QualifiedItemId);
         Assert.Equal(5, restChest.CountById(wood));
         Assert.Equal(0, source.CountTotal());
+    }
+
+    [Fact]
+    public void Underground_Splitter_AndRegulators_ConserveItems_AndRespectTheLimits()
+    {
+        // Baú → Inseridor → Esteira Expressa → Subterrânea (por baixo de uma esteira e de um Filtro) → Divisor. Saídas:
+        // norte = esteira → Inseridor de Pilha + Regulador Geral 50 → baú B; sul = Filtro (pedra) → Inseridor de Pilha +
+        // Regulador Por item (pedra 30) → baú D; leste = esteira → Inseridor de Pilha → baú C (excedente).
+        const string wood = "(O)388";
+        const string stone = "(O)390";
+        var source = new FakeChest(36, new FakeItem(wood, 150), new FakeItem(stone, 60));
+        var chestB = new FakeChest();
+        var chestC = new FakeChest();
+        var chestD = new FakeChest();
+        var g = new GridBuilder()
+            .Chest(0, 0, source)
+            .Inserter(1, 0, Direction.East)
+            .Belt(2, 0, Direction.East, BeltTier.Express)
+            .Underground(3, 0, Direction.East)
+            .Belt(4, 0, Direction.North)
+            .Filter(5, 0, Direction.South, wood)
+            .Underground(6, 0, Direction.East)
+            .Splitter(7, 0)
+            .Belt(7, -1, Direction.North)
+            .Inserter(7, -2, Direction.North, TransferTier.Stack)
+            .Chest(7, -3, chestB)
+            .Regulator(7, -2, new RegulatorRule { Mode = RegulatorMode.General, GeneralLimit = 50 })
+            .Filter(7, 1, Direction.South, stone)
+            .Inserter(7, 2, Direction.South, TransferTier.Stack)
+            .Chest(7, 3, chestD)
+            .Regulator(7, 2, new RegulatorRule { Mode = RegulatorMode.PerItem, PerItemLimits = { [stone] = 30 } })
+            .Belt(8, 0, Direction.East)
+            .Inserter(9, 0, Direction.East, TransferTier.Stack)
+            .Chest(10, 0, chestC);
+
+        int total = source.CountTotal();
+        for (int tick = 0; tick < 9000; tick++)
+        {
+            g.Run(1);
+            Assert.Equal(total, source.CountTotal() + g.CountInTransit() + chestB.CountTotal() + chestC.CountTotal() + chestD.CountTotal());
+        }
+
+        // Com os limites atingidos, um item espera na esteira do norte e uma pedra no filtro do sul (README "Regulador");
+        // o resto vai para o leste como excedente.
+        Assert.Same(g.UndergroundAt(6, 0), g.UndergroundAt(3, 0).Partner);
+        Assert.Equal(0, source.CountTotal());
+        Assert.Equal(50, chestB.CountTotal());
+        Assert.Equal(30, chestD.CountById(stone));
+        Assert.Equal(30, chestD.CountTotal());
+        Assert.Equal(2, g.CountInTransit());
+        Assert.NotNull(g.BeltAt(7, -1).Slot.Item);
+        Assert.Equal(stone, g.FilterAt(7, 1).Slot.Item!.QualifiedItemId);
+        Assert.Equal(total - 82, chestC.CountTotal());
     }
 
     private static int CountInTransit(GridBuilder g, string id)

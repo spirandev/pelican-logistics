@@ -42,6 +42,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Mod: interfaces do Filtro Comum (escolha do item pelo inventário, sem gastá-lo) e do Filtro Completo (modo, itens, qualidades, categorias e context tags), com as linhas novas `ItemPickerRow`, `ItemListRow`, `ToggleGroupRow` e `TextRow`.
 - Mod: desenho do Filtro (com o ícone do item do Filtro Comum) e do Divisor (sem rotação); `pl_dump` mostra a regra do filtro e as portas e ponteiros do Divisor.
 - Core e Mod: placeholder próprio da esteira em curva (traço em L da lateral de entrada até a frente, com as setas do tier).
+- Core: acessórios na grade (`TrySetAccessory`/`RemoveAccessory`): Ponte só em esteiras, Regulador só em Inseridores, no máximo um por tile.
+- Core: Regulador (`RegulatorRule`, modos Geral e Por item) limita o que o Inseridor coloca num baú, ao pegar e ao entregar; com máquina, é ignorado. `RegulatorRuleSerializer` tolera JSON corrompido.
+- Core: Esteira Subterrânea (`UndergroundBeltNode`): papel decidido ao colocar (`UndergroundPairing.DecideRole`), pareamento na `Topology` com vão de até 5 tiles, túnel invisível que anda como uma fila; a entrada é destino do Inseridor e saída do Divisor, a saída é origem do Inseridor e entrada do Divisor. Itens no túnel são salvos.
+- Core: testes de velocidade das três esteiras e dos Inseridores de Pilha e Configurável; placeholders da Subterrânea (círculo branco/preto), da Ponte e do Regulador.
+- Mod: Esteira Rápida, Esteira Expressa, Inseridor de Pilha, Inseridor Configurável e Esteira Subterrânea (Big Craftables); Ponte e Regulador (objetos de `Data/Objects`, não colocáveis pelo jogo). Todos à venda no Clint por 0g e no `pl_give`.
+- Mod: segurando uma Ponte ou um Regulador, o botão de ação aplica o acessório no bloco (mensagem se o bloco não aceita); com a mão livre, clicar numa esteira com ponte devolve a ponte. Quebrar o bloco solta o acessório.
+- Mod: o jogador passa por cima de uma esteira com Ponte (patch em `Object.isPassable`).
+- Mod: desenho da Ponte (por cima do item, semitransparente), do Regulador e da Subterrânea (só os tiles das pontas; a prévia mostra o papel; linha tracejada entre o par ao segurar uma).
+- Mod: interface do Inseridor com "Quantidade por vez" (Configurável) e a seção do Regulador (modo, limite, lista de até 8 itens, "Remover regulador"); linhas novas `NumberRow`, `ButtonRow`, `LabelRow`, `RegulatorItemRow` e `RegulatorItemPickerRow`.
+- Mod: `pl_dump` mostra a quantidade, o Regulador, o acessório e o par da Subterrânea.
 
 ### Alterado
 - Interfaces: o botão OK fica no topo, ao lado do título, e a caixa se ajusta à linha mais larga (o inventário dos filtros).

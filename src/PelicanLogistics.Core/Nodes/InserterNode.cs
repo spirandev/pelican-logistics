@@ -4,6 +4,7 @@ using PelicanLogistics.Core.Endpoints;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
+using PelicanLogistics.Core.Regulators;
 using PelicanLogistics.Core.Simulation;
 
 namespace PelicanLogistics.Core.Nodes;
@@ -54,6 +55,13 @@ public sealed class InserterNode : LogisticsNode
 
     /// <summary>Qual slot virtual abastecer quando o destino é uma máquina.</summary>
     public InserterSlotMode SlotMode { get; set; } = InserterSlotMode.Auto;
+
+    /// <summary>
+    /// Regra do Regulador colocado sobre o Inseridor, ou null sem Regulador (presente quando <see cref="LogisticsNode.Accessory"/>
+    /// é <see cref="AccessoryKind.Regulator"/>). Limita o que entra num baú de destino; com máquina, é ignorada (plano mestre D8).
+    /// A interface altera a regra no lugar.
+    /// </summary>
+    public RegulatorRule? Regulator { get; internal set; }
 
     /// <summary>A mão. <see cref="TransitSlot.EntrySide"/> é o lado da origem; o progresso vai de 0 a <see cref="Balance.End"/> durante a ida.</summary>
     public TransitSlot Hand { get; } = new();
@@ -226,7 +234,7 @@ public sealed class InserterNode : LogisticsNode
 
         return target.Endpoint switch
         {
-            IChestEndpoint chest => chest.SpaceFor(item),
+            IChestEndpoint chest => Math.Min(chest.SpaceFor(item), this.RegulatorAllows(item, chest)),
             IMachineEndpoint machine => this.MachineFits(machine, ctx.Grid.MachineSlots.Get(this.FrontPosition) ?? new VirtualSlots(), item),
             _ => 0,
         };
@@ -257,10 +265,23 @@ public sealed class InserterNode : LogisticsNode
 
         return target.Endpoint switch
         {
-            IChestEndpoint chest => chest.Insert(item, item.Count),
+            IChestEndpoint chest => this.InsertIntoChest(chest, item),
             IMachineEndpoint machine => this.InsertIntoMachine(machine, ctx.Grid.MachineSlots.GetOrCreate(this.FrontPosition), item),
             _ => 0,
         };
+    }
+
+    /// <summary>Insere no baú o que o Regulador permite (o baú pode ter mudado durante a ida). Retorna quantas entraram.</summary>
+    private int InsertIntoChest(IChestEndpoint chest, ILogisticsItem item)
+    {
+        int max = Math.Min(item.Count, this.RegulatorAllows(item, chest));
+        return max > 0 ? chest.Insert(item, max) : 0;
+    }
+
+    /// <summary>Quantas unidades de 'item' o Regulador ainda deixa entrar no baú; sem Regulador, sem limite.</summary>
+    private int RegulatorAllows(ILogisticsItem item, IChestEndpoint chest)
+    {
+        return this.Regulator?.AllowedAmount(item, chest) ?? int.MaxValue;
     }
 
     // Origens.

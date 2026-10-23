@@ -45,6 +45,12 @@ public static class Balance
     /// <summary>Limite das versões Configuráveis.</summary>
     public const int MaxConfigurableAmount = 999;
 
+    /// <summary>Limite de um Regulador recém-colocado (Geral) e de um item recém-adicionado (Por item).</summary>
+    public const int RegulatorDefaultLimit = 100;
+
+    /// <summary>Maior limite que um Regulador aceita (interface: 0 a 99.999).</summary>
+    public const int MaxRegulatorLimit = 99_999;
+
     /// <summary>Velocidade (progresso por tick) de uma esteira do tier indicado.</summary>
     public static int SpeedOf(BeltTier tier)
     {

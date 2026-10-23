@@ -32,9 +32,10 @@ Cada fase é executada **do início ao fim em uma única sessão**, numa branch 
 | 4 | [`fase-4-persistencia.md`](fase-4-persistencia.md) | Itens em trânsito, itens na mão e slots virtuais sobrevivem ao salvar/carregar | 3 |
 | 5 | [`fase-5-roteamento.md`](fase-5-roteamento.md) | Filtro Comum, Filtro Completo, filtro acoplado, Divisor | 4 |
 | 6 | [`fase-6-itens-restantes.md`](fase-6-itens-restantes.md) | Ponte, Esteiras Rápida/Expressa, Inseridores de Pilha/Configurável, Esteira Subterrânea, Regulador | 5 |
-| 7 | [`fase-7-dicas-e-alpha.md`](fase-7-dicas-e-alpha.md) | Dicas ao passar o mouse, revisão das interfaces, empacotamento da alpha 0.1.0 | 6 |
+| 6b | [`fase-6b-tuneis.md`](fase-6b-tuneis.md) | Túnel (entrada/saída) + Esteiras Subterrâneas por tile, embaixo da terra; Capacete de Engenheiro | 6 |
+| 7 | [`fase-7-dicas-e-alpha.md`](fase-7-dicas-e-alpha.md) | Dicas ao passar o mouse, revisão das interfaces, empacotamento da alpha 0.1.0 | 6b |
 
-As fases 0 a 2 foram feitas com dois blocos separados (Extrator e Inseridor); seus planos ficam como registro histórico. A partir da Fase 3 existe só o Inseridor (README "Inseridores").
+As fases 0 a 2 foram feitas com dois blocos separados (Extrator e Inseridor); seus planos ficam como registro histórico. A partir da Fase 3 existe só o Inseridor (README "Inseridores"). A Esteira Subterrânea de vão fixo da Fase 6 é substituída na Fase 6b pelo Túnel com Esteiras Subterrâneas por tile (README "Túnel e Esteira Subterrânea").
 
 ---
 
@@ -89,9 +90,10 @@ Namespaces e responsabilidades (criados aos poucos pelas fases):
 | `Geometry` | `Direction` (North, East, South, West, nessa ordem = **ordem horária**), `TilePos`, extensões (`Opposite`, `Clockwise`, `ToOffset`) |
 | `Items` | `ILogisticsItem` (abstração de um item do jogo) |
 | `Endpoints` | `IChestEndpoint`, `IMachineEndpoint`, `IEndpointProvider` (o que está ao redor das esteiras) |
-| `Nodes` | `LogisticsNode` (base), `BeltNode`, `InserterNode`, `FilterNode`, `SplitterNode`, `UndergroundBeltNode` |
-| `Simulation` | `LogisticsGrid` (um por local do jogo), `LogisticsWorld` (todos os locais), `Topology` (formas, conexões e ordem de processamento), `Balance` (constantes) |
+| `Nodes` | `LogisticsNode` (base), `BeltNode`, `InserterNode`, `FilterNode`, `SplitterNode`, `TunnelNode`, `UndergroundSegmentNode` (Fase 6b; antes `UndergroundBeltNode`) |
+| `Simulation` | `LogisticsGrid` (um por local do jogo, com a camada da superfície e a subterrânea), `LogisticsWorld` (todos os locais), `Topology` (formas, conexões e ordem de processamento), `Balance` (constantes) |
 | `Filters` | `IFilterRule`, `CommonFilterRule`, `CompleteFilterRule` |
+| `Regulators` | `RegulatorMode`, `RegulatorRule`, `RegulatorRuleSerializer` (Fase 6) |
 | `Machines` | `VirtualSlots`, requisitos de máquina |
 | `Persistence` | DTOs de estado em tempo de execução (snapshot) |
 | `Rendering` | Matemática de posição do item no tile (`PathMath`) e pintura dos placeholders em buffers de pixels (`PlaceholderPainter`) |
@@ -120,6 +122,7 @@ Regras do Core:
 
 - Todo **bloco** (esteiras, inseridores, filtros, divisor, esteira subterrânea) é um **Big Craftable** registrado em `Data/BigCraftables`, com ID qualificado `(BC)spirandev.PelicanLogistics_<Nome>`. Isso dá de graça: colocação no mapa, colisão (o jogador não passa), remoção com ferramenta, salvamento do objeto e do seu `modData`.
 - Os **acessórios** (Ponte e Regulador) são **objetos comuns** registrados em `Data/Objects` (`(O)spirandev.PelicanLogistics_<Nome>`), **não colocáveis** pelo jogo. O mod intercepta o clique e aplica o acessório sobre o bloco.
+- A **Esteira Subterrânea** (Fase 6b) também é um objeto comum não colocável: o mod intercepta o clique e cria um segmento na camada subterrânea, sem objeto no mapa (D19). O **Capacete de Engenheiro** é um chapéu (`Data/Hats`, `(H)spirandev.PelicanLogistics_EngineerHelmet`).
 - A **configuração** de cada bloco (direção, filtro, slot, quantidade, acessório) fica no `modData` do próprio objeto, com chaves prefixadas por `spirandev.PelicanLogistics/`. É salva automaticamente pelo jogo.
 - O **estado em tempo de execução** (itens em trânsito, itens na mão dos Inseridores, slots virtuais) é salvo pela Fase 4.
 - Os blocos **não são desenhados pelo jogo**: um patch Harmony em `Object.draw` desenha o placeholder (girado conforme a direção), o braço do Inseridor e o item em trânsito.
@@ -140,10 +143,10 @@ Regras do Core:
 | `BeltSpeedBasic` | 10 | 1 tile/s |
 | `BeltSpeedFast` | 20 | 2 tiles/s |
 | `BeltSpeedExpress` | 40 | 4 tiles/s |
-| `FilterSpeed` / `SplitterSpeed` / `UndergroundSpeed` | 40 | Velocidade máxima |
+| `FilterSpeed` / `SplitterSpeed` | 40 | Velocidade máxima |
+| `UndergroundSpeed` | 20 | Túnel e Esteira Subterrânea: velocidade do tier 2 (Fase 6b; era 40) |
 | `InserterSpeed` | 40 | Progresso da mão do Inseridor por tick: a ida da origem ao destino leva 15 ticks |
 | `InserterReturnTicks` | 15 | Ticks da volta do braço, vazio. Ida + volta = 30 ticks = 1 operação a cada 0,5 s (todas as versões) |
-| `UndergroundMaxGap` | 5 | Tiles que a Esteira Subterrânea atravessa |
 | `MaxConfigurableAmount` | 999 | Limite das versões Configuráveis |
 
 Os valores são da alpha e podem mudar. Nunca use números mágicos fora de `Balance`.
@@ -173,6 +176,10 @@ O README define o comportamento. Algumas situações não estão cobertas por el
 | D15 | Loja | O Clint (loja `Blacksmith`) vende todos os itens do mod por 0g, estoque ilimitado, quando `UnlockAll` = `true` (padrão na alpha). Há também o comando de console `pl_give` que coloca um de cada no inventário. |
 | D16 | Inseridor puxa | O Inseridor **puxa** das entradas (como o Divisor, D5): a esteira que termina nele fica parada no fim (`Blocked`) até ele pegar. Várias entradas → rodízio em ordem horária a partir da última usada. |
 | D17 | Inseridor sem reserva | O Inseridor calcula na hora de pegar quanto cabe no destino, sem reservar espaço. Se o destino encher durante a ida (ex.: outro Inseridor abasteceu o mesmo slot), o item espera na mão até caber. |
+| D18 | Capacete de Engenheiro | Chapéu do mod. **Ver** (Esteiras Subterrâneas e itens nelas, papel do Túnel antes de colocar, slots virtuais das máquinas, descrições técnicas dos itens do mod): com o capacete **na cabeça ou na mão**. **Construir embaixo da terra** (colocar e retirar Esteiras Subterrâneas, colocar Túneis): só **na cabeça**, porque a mão segura o item. Os comandos de console mostram tudo sem o capacete. O que já está visível na superfície continua visível sem ele. |
+| D19 | Camada subterrânea | As Esteiras Subterrâneas **não são objetos do jogo**: o tile continua livre (plantar, caminho, cerca, construção). Ficam numa segunda camada da `LogisticsGrid` e, no adaptador, no `modData` do local do jogo (`GameLocation.modData`). Só o Túnel liga as duas camadas. |
+| D20 | Retirar Esteira Subterrânea | Com o capacete na cabeça: segurando uma Esteira Subterrânea, o botão de ação sobre um segmento o devolve (num tile sem segmento, coloca). Com a mão livre, o botão de ação também devolve, mas só se no tile não houver objeto, móvel nem terrain feature com interação (só caminho ou grama são permitidos); assim nunca rouba o clique de uma colheita ou de um baú. |
+| D21 | Túnel | Papel fixo ao colocar: **saída** se a Esteira Subterrânea atrás dele aponta para ele; senão **entrada**. Não pode haver Esteira Subterrânea embaixo de um Túnel (nem Túnel sobre uma Esteira Subterrânea). |
 
 ---
 

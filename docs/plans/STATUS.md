@@ -12,10 +12,11 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
 | 4: Persistência | Concluída | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | Compila contra o jogo; salvar/carregar não testado no jogo (ver pendências) |
 | 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
-| 6: Itens restantes | Não iniciada | | | |
+| 6: Itens restantes | Concluída | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | OK em 2026-10-22 |
+| 6b: Túneis | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
-A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7.
+A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7. A Fase 6b (Túneis) foi criada em 2026-10-19, antes do teste local da Fase 6, a pedido do usuário: a Esteira Subterrânea de vão fixo vira Túnel + Esteiras Subterrâneas por tile, com o Capacete de Engenheiro (README e plano mestre D18 a D21 já atualizados).
 
 ---
 
@@ -64,6 +65,11 @@ Formato sugerido:
   - Bug na interface: em 1366×768, a interface do Filtro Completo cortava a parte de baixo (só apareciam as categorias até "Artesanais, Ovos..."). Agora ela tem duas colunas (cerca de 1224×630 pixels).
   - Pedido de mudança: o Inseridor precisa funcionar com todos os blocos, como funciona com baús e máquinas. Ex.: baú → Inseridor → esteira → Divisor → Inseridor → fornalha não funcionava do Divisor para o Inseridor; baú → Inseridor → filtro → Divisor → Inseridor → fornalha também precisa funcionar. Agora o Inseridor é entrada e saída do Divisor (README "Divisor"; plano mestre D3 e D4 atualizados).
 - Não testado: salvar e carregar das regras dos filtros e dos itens dentro do Divisor e dos filtros (mesmo motivo da Fase 4). O placeholder da esteira em curva (`a739034`) foi compilado depois do teste e ainda não foi visto no jogo.
+
+### Da fase 6
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos), os 399 testes do Core passam e foi instalado na pasta `Mods`.
+- Testado pelo usuário em 2026-10-22: os itens novos aparecem no Clint e "tudo certo" no teste.
+- A Esteira Subterrânea de vão fixo será substituída na Fase 6b (Túnel + Esteiras Subterrâneas por tile + Capacete de Engenheiro, `fase-6b-tuneis.md`).
 
 ---
 
@@ -137,3 +143,23 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - `ToggleRow` não foi criado: nenhuma interface desta fase tem um liga/desliga isolado, e o `ToggleGroupRow` cobre qualidades e categorias. `ToggleGroupRow` e `CycleRow` são genéricos no tipo do valor.
 - `ItemListRow`: os 12 slots fantasma são um pouco menores (52 px) para o rótulo caber na mesma linha; item repetido ou lista cheia toca o som de "cancelar".
 - Um filtro recolhido e colocado de novo volta vazio, como a configuração do Inseridor (o jogo copia o `modData` do item segurado).
+
+### Fase 6
+- Branch: esta sessão rodou localmente (não na nuvem), então foi usado o nome do plano, `fase-6-itens-restantes`.
+- Pendências da Fase 5: nenhuma de correção registrada.
+- Compilação do adaptador: o jogo está instalado nesta máquina, então o mod foi compilado contra ele (0 avisos, 0 erros), sem instalar na pasta `Mods` (`-p:EnableModDeploy=false`). As "APIs a confirmar" do plano foram conferidas no código descompilado; falta o teste no jogo.
+- Namespace novo no Core: `Regulators` (`RegulatorMode`, `RegulatorRule`, `RegulatorRuleSerializer`), acrescentado à tabela do plano mestre.
+- `Balance`: `RegulatorDefaultLimit = 100` (Regulador recém-colocado e item recém-adicionado à lista) e `MaxRegulatorLimit = 99.999`. Limites fora de `0..99.999` vindos do `modData` são corrigidos; itens com ID vazio são descartados; JSON corrompido ou modo inválido dá a regra padrão (Geral, 100).
+- Acessórios: `LogisticsNode.Accessory` só muda pela grade (`TrySetAccessory`/`RemoveAccessory`), para nenhum acessório ficar num bloco inválido. `TrySetAccessory` recebe a regra do Regulador (usada ao carregar o save) ou cria a padrão. Ao carregar, um acessório inválido no `modData` (não deveria acontecer) cai no chão, com aviso no log.
+- Regulador: "sem limite" é `int.MaxValue`; o limite vale ao pegar e também ao entregar (se o baú mudou durante a ida, o resto espera na mão, como no D17). Por item conta o ID em qualquer qualidade (`CountById`).
+- Esteira Subterrânea: o túnel tem sempre 5 slots (a persistência não depende do pareamento), e só os primeiros "vão" slots são usados. Se o par for refeito mais perto, os itens além do vão novo seguem direto para a saída; se a saída for removida, os itens esperam no túnel até haver outra saída. A entrada não junta pilhas (como o Filtro), e a saída não recebe de nenhum vizinho, só do par.
+- `DecideRole`: "entrada sem par" é calculado na hora (a primeira Subterrânea à frente dela não é uma saída), e não pelo `Partner`, que só é atualizado no tick seguinte. Uma Subterrânea colocada entre um par já formado vira entrada.
+- Teste 24 (conservação): com os limites atingidos, um item fica esperando na esteira e outro no filtro (README "Regulador": o resto fica na esteira), então o teste confere a conservação a cada tick e os 2 itens parados, em vez de "nada em trânsito".
+- Mensagens: além das duas do plano, "Este bloco já tem um acessório." (Ponte ou Regulador num bloco certo que já tem acessório). Bloco errado tem prioridade sobre essa mensagem.
+- "Mão livre" para tirar a Ponte = nenhum item selecionado na barra (com uma ferramenta na mão, nada acontece).
+- Placeholders: a Ponte é uma faixa horizontal que não gira com a esteira (README "faixa horizontal"), com 60% de opacidade. O Regulador é um quadrado 6×6 no canto inferior direito do Inseridor. O ícone da Subterrânea no inventário é o da entrada; segurando uma, a prévia já mostra o círculo que ela terá no tile do cursor.
+- Ponte passável: o patch lê a ponte do `modData` do objeto, sem consultar a grade (é chamado muitas vezes por quadro). `GameLocation.isCollidingPosition` pula objetos com `isPassable()` verdadeiro; a picareta não usa `isPassable`, então a esteira com ponte continua quebrável.
+- Acessórios em `Data/Objects`: `Type = "Basic"`, `Category = 0`, `Price = 0` e a tag `not_placeable` (pelo código do jogo, `Object.isPlaceable` já recusa esse tipo/categoria; a tag é uma garantia extra), sem presentear nem entrar em coleções ou vendas aleatórias.
+- Interface do Inseridor: quando a forma muda (modo do Regulador, item adicionado ou removido, "Remover regulador"), a interface é fechada e aberta de novo com as linhas certas. A lista Por item fica numa segunda coluna; "Adicionar item" abre uma tela própria com o inventário (o inventário tem 768 px e não caberia ao lado da lista em 1366×768). O Regulador removido vai para o inventário, ou cai no chão se não couber.
+- `NumberField`: botões com texto ASCII (`-10`, `-1`, `+1`, `+10`), o campo aceita no máximo os dígitos do limite (3 para 999, 5 para 99.999) e, solto, mostra o valor corrigido. Os textos dos itens usam "2 vezes" em vez de "2×" (o sinal pode não existir na fonte do jogo).
+- Quebrar um bloco apaga o acessório do `modData` do objeto recolhido (o acessório já caiu no chão).

@@ -168,4 +168,68 @@ public class PlaceholderPainterTests
         Assert.Equal(PlaceholderColors.Mark, curve.Get(8, 3));                         // ponta da seta para cima, na coluna da reta
         Assert.Equal(PlaceholderColors.BeltBasic, curve.Get(8, 12));                   // nada embaixo: a traseira não recebe
     }
+
+    [Theory]
+    [InlineData(UndergroundRole.Entrance)]
+    [InlineData(UndergroundRole.Exit)]
+    public void PaintUnderground_IsOpaqueDarkGray_WithWhiteOrBlackCircle_AndArrowPointingNorth(UndergroundRole role)
+    {
+        PixelBuffer underground = PlaceholderPainter.PaintUnderground(role);
+        Rgba circle = role == UndergroundRole.Entrance ? PlaceholderColors.Mark : PlaceholderColors.UndergroundExit;
+
+        Assert.Equal(16 * 16, underground.CountOpaque());
+        Assert.Equal(PlaceholderColors.Underground, underground.Get(2, 13));
+        Assert.Equal(circle, underground.Get(8, 9));
+        Assert.Equal(PlaceholderColors.Outline, underground.Get(8, 4));  // contorno do círculo
+        Assert.Equal(PlaceholderColors.Mark, underground.Get(8, 1));     // ponta da seta, em cima
+        Assert.Equal(PlaceholderColors.Mark, underground.Get(6, 3));
+    }
+
+    [Fact]
+    public void PaintUnderground_EntranceAndExitDiffer()
+    {
+        Assert.NotEqual(
+            PlaceholderPainter.PaintUnderground(UndergroundRole.Entrance).Get(8, 9),
+            PlaceholderPainter.PaintUnderground(UndergroundRole.Exit).Get(8, 9));
+    }
+
+    [Fact]
+    public void PaintBridge_IsABrownHorizontalBand_TransparentAboveAndBelow()
+    {
+        PixelBuffer bridge = PlaceholderPainter.PaintBridge();
+
+        Assert.Equal(16 * 8, bridge.CountOpaque());
+        Assert.All(Enumerable.Range(0, 16), x => Assert.False(bridge.Get(x, 7).IsTransparent));
+        Assert.True(bridge.Get(8, 2).IsTransparent);
+        Assert.True(bridge.Get(8, 13).IsTransparent);
+        Assert.Equal(PlaceholderColors.Bridge, bridge.Get(1, 7));
+    }
+
+    [Fact]
+    public void PaintRegulator_IsASmallYellowSquareInTheCorner()
+    {
+        PixelBuffer regulator = PlaceholderPainter.PaintRegulator();
+
+        Assert.Equal(36, regulator.CountOpaque());
+        Assert.Equal(PlaceholderColors.Regulator, regulator.Get(11, 11));
+        Assert.True(regulator.Get(8, 8).IsTransparent);
+    }
+
+    [Theory]
+    [InlineData(AccessoryKind.Bridge)]
+    [InlineData(AccessoryKind.Regulator)]
+    public void PaintAccessoryIcon_Is16x16_WithSomeOpaquePixels(AccessoryKind kind)
+    {
+        PixelBuffer icon = PlaceholderPainter.PaintAccessoryIcon(kind);
+
+        Assert.Equal(16, icon.Width);
+        Assert.Equal(16, icon.Height);
+        Assert.InRange(icon.CountOpaque(), 1, (16 * 16) - 1);
+    }
+
+    [Fact]
+    public void PaintAccessoryIcon_None_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => PlaceholderPainter.PaintAccessoryIcon(AccessoryKind.None));
+    }
 }
