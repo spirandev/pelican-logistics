@@ -11,8 +11,8 @@ using SObject = StardewValley.Object;
 namespace PelicanLogistics.Framework.Input;
 
 /// <summary>
-/// Coloca e retira Esteiras Subterrâneas com o botão de ação (README "Túnel e Esteira Subterrânea"; plano mestre D18 a
-/// D20), sempre com o Capacete de Engenheiro na cabeça. Avisa também quando o jogador tenta colocar um Túnel sem o
+/// Coloca e retira Esteiras Subterrâneas com o botão de ação ou o de usar ferramenta (README "Túnel e Esteira
+/// Subterrânea"; plano mestre D18 a D20), sempre com o Capacete de Engenheiro na cabeça. Avisa também quando o jogador tenta colocar um Túnel sem o
 /// capacete ou sobre uma Esteira Subterrânea (a colocação em si é barrada pelo <c>TunnelPlacementPatch</c>).
 /// </summary>
 internal sealed class UndergroundController
@@ -50,14 +50,16 @@ internal sealed class UndergroundController
         if (location == null)
             return false;
 
-        Vector2 tile = e.Cursor.GrabTile;
-        TilePos pos = WorldRegistry.ToTilePos(tile);
-        if (e.Button.IsActionButton() || e.Button.IsUseToolButton())
-            this.WarnAboutTunnel(location, tile, pos);
-
-        if (!e.Button.IsActionButton())
+        bool action = e.Button.IsActionButton();
+        bool useTool = e.Button.IsUseToolButton();
+        if (!action && !useTool)
             return false;
 
+        Vector2 tile = e.Cursor.GrabTile;
+        TilePos pos = WorldRegistry.ToTilePos(tile);
+        this.WarnAboutTunnel(location, tile, pos);
+
+        // Segurando a Esteira Subterrânea, os dois botões constroem, como o jogo faz ao colocar objetos.
         Item? held = Game1.player.CurrentItem;
         if (ItemIds.IsUndergroundBelt(held))
         {
@@ -77,8 +79,8 @@ internal sealed class UndergroundController
             return true;
         }
 
-        // Mão livre: só retira se nada mais no tile responderia ao clique (D20).
-        if (held == null && EngineerHelmet.IsWorn && this.registry.GetSegment(location, pos) != null && IsBare(location, tile))
+        // Mão livre: só o botão de ação, e só se nada mais no tile responderia ao clique (D20).
+        if (action && held == null && EngineerHelmet.IsWorn && this.registry.GetSegment(location, pos) != null && IsBare(location, tile))
         {
             this.helper.Input.Suppress(e.Button);
             this.Remove(location, pos);

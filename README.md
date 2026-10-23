@@ -72,7 +72,7 @@ Os nomes abaixo são provisórios. Todos os itens são colocados no mapa, como b
 - **Como uma esteira:** uma pilha por tile, sentido único, faz **curva** sozinha (gira com `R` antes de colocar). Sem comprimento máximo: o custo de 1 item por tile já limita.
 - **Velocidade:** a do tier 2 (2 tiles/s), em toda a corrente e nas duas pontas do Túnel. Construir embaixo da terra é mais complexo, então não é tão rápido quanto a Expressa.
 - **Invisível:** os segmentos e os itens dentro deles só aparecem com o [Capacete de Engenheiro](#capacete-de-engenheiro).
-- **Colocar e retirar:** só com o Capacete de Engenheiro **na cabeça**. Segurando uma Esteira Subterrânea, o botão de ação coloca um segmento num tile vazio e retira um segmento existente. Com a mão livre, o botão de ação também retira um segmento, se não houver mais nada no tile com que o jogo interaja (objeto, móvel, plantação, árvore). Colocar um Túnel também exige o capacete na cabeça.
+- **Colocar e retirar:** só com o Capacete de Engenheiro **na cabeça**. Segurando uma Esteira Subterrânea, o botão de ação ou o de usar ferramenta (direito ou esquerdo do mouse) coloca um segmento num tile vazio e retira um segmento existente. Com a mão livre, o botão de ação também retira um segmento, se não houver mais nada no tile com que o jogo interaja (objeto, móvel, plantação, árvore). Colocar um Túnel também exige o capacete na cabeça.
 - **Removido com itens dentro:** os itens caem no chão, no tile onde estavam.
 - A entrada do Túnel é destino válido do Inseridor e saída válida do Divisor; a saída é origem do Inseridor (por trás ou pela lateral) e entrada do Divisor.
 
