@@ -10,7 +10,9 @@ namespace PelicanLogistics.Core.Nodes;
 /// <summary>
 /// Divisor (README "Divisor"): bloco sem direção com 4 portas. Cada esteira, filtro, Inseridor ou saída de Túnel que
 /// aponta para ele é uma entrada, e cada esteira ou filtro que sai dele, ou Inseridor ou entrada de Túnel com a traseira
-/// virada para ele, é uma saída (portas calculadas pela <see cref="Topology"/>, plano mestre D4).
+/// virada para ele, é uma saída (portas calculadas pela <see cref="Topology"/>, plano mestre D4). O Divisor Subterrâneo
+/// (plano mestre D22) é o mesmo nó na camada subterrânea: as portas são Esteiras e Filtros Subterrâneos e Túneis (a
+/// entrada com a frente virada para ele, a saída com a traseira virada para ele).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -75,7 +77,7 @@ public sealed class SplitterNode : LogisticsNode
     {
         foreach (Direction output in this.Outputs)
         {
-            if (grid.Get(this.Position.Offset(output)) is { } node)
+            if (grid.NeighborOf(this, output) is { } node)
                 yield return node;
         }
     }
@@ -112,7 +114,7 @@ public sealed class SplitterNode : LogisticsNode
             if (!this.Inputs.Contains(side))
                 continue;
 
-            TransitSlot? source = ctx.NodeAt(this.Position.Offset(side))?.GetOutgoingSlot(this.Position);
+            TransitSlot? source = ctx.OutgoingSlot(this, side);
             if (source?.Item == null || source.Progress != Balance.End)
                 continue;
 
@@ -147,7 +149,7 @@ public sealed class SplitterNode : LogisticsNode
             // A pilha inteira vai como a própria instância; uma parte, separada dela.
             bool whole = amount == item.Count;
             ILogisticsItem part = whole ? item : item.Split(amount);
-            int taken = Give(node, side, part, ctx);
+            int taken = this.Give(node, side, part, ctx);
             if (taken > 0)
                 this.LastOutput = side;
 
@@ -170,12 +172,12 @@ public sealed class SplitterNode : LogisticsNode
         this.Slot.Blocked = true;
     }
 
-    /// <summary>Entrega numa saída: empurra numa esteira ou filtro; na mão de um Inseridor, só o que ele pegaria.</summary>
-    private static int Give(LogisticsNode node, Direction side, ILogisticsItem part, TickContext ctx)
+    /// <summary>Entrega numa saída: empurra numa esteira, filtro ou Túnel; na mão de um Inseridor, só o que ele pegaria.</summary>
+    private int Give(LogisticsNode node, Direction side, ILogisticsItem part, TickContext ctx)
     {
         return node is InserterNode inserter
             ? inserter.Offer(side.Opposite(), part, ctx)
-            : node.Accept(side.Opposite(), part, ctx);
+            : ctx.Deliver(this, node, side, part);
     }
 
     /// <summary>
@@ -189,12 +191,12 @@ public sealed class SplitterNode : LogisticsNode
         var unfiltered = new List<(Direction, LogisticsNode)>();
         foreach (Direction side in ClockwiseAfter(this.LastOutput))
         {
-            if (!this.Outputs.Contains(side) || ctx.NodeAt(this.Position.Offset(side)) is not { } node)
+            if (!this.Outputs.Contains(side) || ctx.NeighborAt(this, side) is not { } node)
                 continue;
 
             bool free = node is InserterNode inserter
                 ? inserter.AmountToTake(side.Opposite(), item, ctx) > 0
-                : node.CanAccept(side.Opposite(), item);
+                : ctx.CanDeliver(this, node, side, item);
             if (!free)
                 continue;
 

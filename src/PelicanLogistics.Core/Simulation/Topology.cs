@@ -13,29 +13,24 @@ namespace PelicanLogistics.Core.Simulation;
 public static class Topology
 {
     /// <summary>
-    /// Recalcula, nesta ordem, o lado de entrada das esteiras e das Esteiras Subterrâneas, as portas dos Divisores
-    /// (dependem do lado de entrada das esteiras) e as entradas dos Inseridores, e devolve a ordem de processamento dos
-    /// nós das duas camadas (o Túnel liga a superfície à camada subterrânea).
+    /// Recalcula, nesta ordem, o lado de entrada das esteiras e das Esteiras Subterrâneas, as portas dos Divisores das duas
+    /// camadas (dependem do lado de entrada das esteiras) e as entradas dos Inseridores, e devolve a ordem de processamento
+    /// dos nós das duas camadas (o Túnel liga a superfície à camada subterrânea).
     /// </summary>
     public static IReadOnlyList<LogisticsNode> Recompute(LogisticsGrid grid)
     {
         List<LogisticsNode> nodes = grid.Nodes
-            .OrderBy(n => n.Position.Y)
-            .ThenBy(n => n.Position.X)
-            .ToList();
-        List<UndergroundSegmentNode> segments = grid.UndergroundNodes
-            .OrderBy(n => n.Position.Y)
+            .Concat(grid.UndergroundNodes)
+            .OrderBy(n => n.Layer)
+            .ThenBy(n => n.Position.Y)
             .ThenBy(n => n.Position.X)
             .ToList();
 
         foreach (LogisticsNode node in nodes)
         {
-            if (node is BeltNode belt)
+            if (node is ConveyorNode belt)
                 belt.InputSide = ComputeInputSide(belt, side => Provides(grid, belt, side));
         }
-
-        foreach (UndergroundSegmentNode segment in segments)
-            segment.InputSide = ComputeInputSide(segment, side => ProvidesUnderground(grid, segment, side));
 
         foreach (LogisticsNode node in nodes)
         {
@@ -49,7 +44,7 @@ public static class Topology
                 inserter.Inputs = ComputeInserterInputs(grid, inserter);
         }
 
-        return ComputeOrder(grid, nodes.Concat(segments).ToList());
+        return ComputeOrder(grid, nodes);
     }
 
     /// <summary>
@@ -72,24 +67,11 @@ public static class Topology
     }
 
     /// <summary>
-    /// True se o vizinho do lado indicado entrega na Esteira Subterrânea: outra Esteira Subterrânea cuja frente é este
-    /// tile, ou a entrada de um Túnel (na superfície do tile vizinho) cuja frente é este tile.
-    /// </summary>
-    private static bool ProvidesUnderground(LogisticsGrid grid, UndergroundSegmentNode segment, Direction side)
-    {
-        TilePos pos = segment.Position.Offset(side);
-        if (grid.GetUnderground(pos) is { } neighbor && neighbor.ProvidesTo(segment.Position))
-            return true;
-
-        return grid.Get(pos) is TunnelNode { Role: TunnelRole.Entrance } tunnel && tunnel.FrontPosition == segment.Position;
-    }
-
-    /// <summary>
-    /// Portas de um Divisor (plano mestre D4), em ordem horária N → E → S → W. Entrada se o vizinho (esteira, filtro,
-    /// Inseridor ou saída de Túnel) entrega no Divisor; saída se o vizinho recebe pelo lado virado para o Divisor
-    /// (uma esteira com o Divisor atrás, ou sem nada atrás e com o Divisor na lateral, que vira curva; um filtro,
-    /// Inseridor ou entrada de Túnel com a traseira virada para ele). Dois Divisores encostados não se conectam,
-    /// nem um Inseridor com o Divisor na lateral.
+    /// Portas de um Divisor (plano mestre D4, D22), em ordem horária N → E → S → W, com os vizinhos da camada dele. Entrada
+    /// se o vizinho (esteira, filtro, Inseridor ou Túnel) entrega no Divisor; saída se o vizinho recebe pelo lado virado para
+    /// o Divisor (uma esteira com o Divisor atrás, ou sem nada atrás e com o Divisor na lateral, que vira curva; um filtro,
+    /// Inseridor ou Túnel com a traseira virada para ele). Dois Divisores encostados não se conectam, nem um Inseridor com o
+    /// Divisor na lateral.
     /// </summary>
     private static void ComputeSplitterPorts(LogisticsGrid grid, SplitterNode splitter)
     {
@@ -97,28 +79,34 @@ public static class Topology
         var outputs = new List<Direction>(4);
         foreach (Direction side in DirectionExtensions.All)
         {
-            LogisticsNode? neighbor = grid.Get(splitter.Position.Offset(side));
+            LogisticsNode? neighbor = grid.NeighborOf(splitter, side);
             if (neighbor is null or SplitterNode)
                 continue;
 
-            // Lado por onde o vizinho recebe; null se ele não recebe de vizinhos da superfície (saída de Túnel).
-            Direction? neighborInput = neighbor switch
-            {
-                BeltNode belt => belt.InputSide,
-                FilterNode filter => filter.InputSide,
-                InserterNode inserter => inserter.Facing.Opposite(),
-                TunnelNode { Role: TunnelRole.Entrance } entrance => entrance.InputSide,
-                _ => null,
-            };
-
-            if (neighbor.ProvidesTo(splitter.Position))
+            if (Provides(grid, splitter, side))
                 inputs.Add(side);
-            else if (neighborInput == side.Opposite())
+            else if (InputSideFrom(neighbor, splitter.Layer) == side.Opposite())
                 outputs.Add(side);
         }
 
         splitter.Inputs = inputs;
         splitter.Outputs = outputs;
+    }
+
+    /// <summary>
+    /// Lado por onde o nó recebe de um vizinho da camada indicada, ou null se não recebe dela. O Túnel recebe da superfície
+    /// se for a entrada e da camada subterrânea se for a saída, sempre pela traseira.
+    /// </summary>
+    private static Direction? InputSideFrom(LogisticsNode node, NodeLayer fromLayer)
+    {
+        return node switch
+        {
+            ConveyorNode belt => belt.InputSide,
+            FilterNode filter => filter.InputSide,
+            InserterNode inserter => inserter.Facing.Opposite(),
+            TunnelNode tunnel when (tunnel.Role == TunnelRole.Entrance) == (fromLayer == NodeLayer.Surface) => tunnel.InputSide,
+            _ => null,
+        };
     }
 
     /// <summary>
@@ -145,9 +133,16 @@ public static class Topology
         return grid.Get(node.Position.Offset(side)) is InserterNode or SplitterNode;
     }
 
+    /// <summary>
+    /// True se o vizinho do lado indicado, na camada do nó, entrega nele. Embaixo da terra, um Túnel vizinho entrega se for
+    /// a entrada (<see cref="LogisticsGrid.NeighborOf"/> só devolve a entrada com a frente virada para o nó).
+    /// </summary>
     private static bool Provides(LogisticsGrid grid, LogisticsNode node, Direction side)
     {
-        LogisticsNode? neighbor = grid.Get(node.Position.Offset(side));
+        LogisticsNode? neighbor = grid.NeighborOf(node, side);
+        if (node.Layer == NodeLayer.Underground && neighbor is TunnelNode tunnel)
+            return tunnel.Role == TunnelRole.Entrance;
+
         return neighbor != null && neighbor.ProvidesTo(node.Position);
     }
 

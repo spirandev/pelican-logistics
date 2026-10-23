@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Simulation;
 
@@ -22,20 +20,4 @@ public sealed class BeltNode : ConveyorNode
     public BeltTier Tier { get; }
 
     public override int Speed => Balance.SpeedOf(this.Tier);
-
-    public override IEnumerable<LogisticsNode> Downstream(LogisticsGrid grid)
-    {
-        LogisticsNode? front = grid.Get(this.FrontPosition);
-        return front == null ? Array.Empty<LogisticsNode>() : new[] { front };
-    }
-
-    public override TransitSlot? GetOutgoingSlot(TilePos target)
-    {
-        return target == this.FrontPosition && this.Slot.Item != null ? this.Slot : null;
-    }
-
-    protected override void DeliverForward(TickContext ctx)
-    {
-        ctx.PushForward(this, this.Slot, this.Facing);
-    }
 }

@@ -13,7 +13,8 @@ namespace PelicanLogistics.Core.Nodes;
 /// </summary>
 /// <remarks>
 /// Segura no máximo uma pilha e nunca junta itens. Um Inseridor com o filtro à frente só retira o que o filtro
-/// aceita (filtro acoplado), porque o Inseridor só pega o que o destino aceita.
+/// aceita (filtro acoplado), porque o Inseridor só pega o que o destino aceita. Na camada subterrânea (Filtro
+/// Subterrâneo, plano mestre D22) os vizinhos são os blocos subterrâneos e os Túneis (<see cref="LogisticsGrid.NeighborOf"/>).
 /// </remarks>
 public sealed class FilterNode : LogisticsNode
 {
@@ -52,7 +53,7 @@ public sealed class FilterNode : LogisticsNode
 
     public override IEnumerable<LogisticsNode> Downstream(LogisticsGrid grid)
     {
-        LogisticsNode? front = grid.Get(this.Position.Offset(this.Facing));
+        LogisticsNode? front = grid.NeighborOf(this, this.Facing);
         return front == null ? Array.Empty<LogisticsNode>() : new[] { front };
     }
 

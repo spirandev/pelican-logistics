@@ -6,11 +6,11 @@ namespace PelicanLogistics.Core.Persistence;
 /// <summary>Estado em tempo de execução de um nó. A configuração (direção, slot etc.) fica no <c>modData</c> do jogo.</summary>
 public sealed class NodeRuntimeState
 {
-    /// <summary>Nó da superfície.</summary>
-    public const int SurfaceLayer = 0;
+    /// <summary>Nó da superfície (<see cref="NodeLayer.Surface"/>).</summary>
+    public const int SurfaceLayer = (int)NodeLayer.Surface;
 
-    /// <summary>Esteira Subterrânea.</summary>
-    public const int UndergroundLayer = 1;
+    /// <summary>Bloco subterrâneo: Esteira, Filtro ou Divisor Subterrâneo (<see cref="NodeLayer.Underground"/>).</summary>
+    public const int UndergroundLayer = (int)NodeLayer.Underground;
 
     public int X { get; set; }
 

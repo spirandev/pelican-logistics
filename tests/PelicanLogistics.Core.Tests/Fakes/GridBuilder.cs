@@ -98,6 +98,24 @@ public sealed class GridBuilder
         return this;
     }
 
+    /// <summary>Filtro Comum Subterrâneo que só deixa passar o item indicado.</summary>
+    public GridBuilder UndergroundFilter(int x, int y, Direction facing, string qualifiedItemId)
+    {
+        return this.UndergroundFilter(x, y, facing, new CommonFilterRule { QualifiedItemId = qualifiedItemId });
+    }
+
+    public GridBuilder UndergroundFilter(int x, int y, Direction facing, IFilterRule rule)
+    {
+        this.Grid.AddUnderground(new FilterNode(new TilePos(x, y), facing, rule));
+        return this;
+    }
+
+    public GridBuilder UndergroundSplitter(int x, int y)
+    {
+        this.Grid.AddUnderground(new SplitterNode(new TilePos(x, y)));
+        return this;
+    }
+
     /// <summary>Coloca um Regulador com a regra indicada sobre o Inseridor do tile.</summary>
     public GridBuilder Regulator(int x, int y, RegulatorRule rule)
     {
@@ -152,6 +170,12 @@ public sealed class GridBuilder
     /// <summary>A Esteira Subterrânea do tile (falha o teste se não houver).</summary>
     public UndergroundSegmentNode SegmentAt(int x, int y) => Assert.IsType<UndergroundSegmentNode>(this.Grid.GetUnderground(new TilePos(x, y)));
 
+    /// <summary>O Filtro Subterrâneo do tile (falha o teste se não houver).</summary>
+    public FilterNode UndergroundFilterAt(int x, int y) => Assert.IsType<FilterNode>(this.Grid.GetUnderground(new TilePos(x, y)));
+
+    /// <summary>O Divisor Subterrâneo do tile (falha o teste se não houver).</summary>
+    public SplitterNode UndergroundSplitterAt(int x, int y) => Assert.IsType<SplitterNode>(this.Grid.GetUnderground(new TilePos(x, y)));
+
     /// <summary>Slots virtuais da máquina no tile, ou null se não há nada guardado.</summary>
     public VirtualSlots? SlotsAt(int x, int y) => this.Grid.MachineSlots.Get(new TilePos(x, y));
 
@@ -161,9 +185,9 @@ public sealed class GridBuilder
         return Assert.IsType<T>(this.Grid.Get(new TilePos(x, y)));
     }
 
-    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós das duas camadas: esteiras, filtros, Divisores, Túneis, Esteiras Subterrâneas e mãos dos Inseridores).</summary>
+    /// <summary>Soma das unidades em trânsito (todas as pilhas em todos os nós das duas camadas: esteiras, filtros, Divisores, Túneis, blocos subterrâneos e mãos dos Inseridores).</summary>
     public int CountInTransit()
     {
-        return this.Grid.Nodes.Concat<LogisticsNode>(this.Grid.UndergroundNodes).SelectMany(n => n.Slots).Where(s => s.Item != null).Sum(s => s.Item!.Count);
+        return this.Grid.Nodes.Concat(this.Grid.UndergroundNodes).SelectMany(n => n.Slots).Where(s => s.Item != null).Sum(s => s.Item!.Count);
     }
 }

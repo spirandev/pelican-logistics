@@ -29,6 +29,9 @@ public abstract class LogisticsNode
 
     public abstract NodeKind Kind { get; }
 
+    /// <summary>Camada em que o nó está. Definida pela grade ao adicionar (<see cref="LogisticsGrid.Add"/> ou <see cref="LogisticsGrid.AddUnderground"/>).</summary>
+    public NodeLayer Layer { get; internal set; } = NodeLayer.Surface;
+
     /// <summary>Acessório sobre o bloco. Só muda por <see cref="LogisticsGrid.TrySetAccessory"/> e <see cref="LogisticsGrid.RemoveAccessory"/>.</summary>
     public AccessoryKind Accessory { get; internal set; } = AccessoryKind.None;
 
@@ -70,7 +73,8 @@ public abstract class LogisticsNode
 
     /// <summary>
     /// O slot que este nó está entregando para o tile 'target', ou null. Sem efeito colateral. Usado por quem
-    /// puxa (Inseridor; Divisor e Filtro na Fase 5), que confere <c>Progress == Balance.End</c> antes de pegar.
+    /// puxa (Inseridor, Divisor), que confere <c>Progress == Balance.End</c> antes de pegar. Quem puxa só enxerga os nós da
+    /// própria camada (<see cref="TickContext.OutgoingSlot"/>).
     /// </summary>
     public virtual TransitSlot? GetOutgoingSlot(TilePos target)
     {
