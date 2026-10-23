@@ -68,7 +68,7 @@ Os nomes abaixo são provisórios. Todos os itens são colocados no mapa, como b
                      plantação     caminho        cerca
 ```
 
-- **Túnel:** bloco na superfície, com direção (gira com `R`). Colocado sem nada atrás, vira **entrada** (círculo branco); colocado na ponta de uma corrente de Esteiras Subterrâneas que aponta para ele, vira **saída** (círculo preto). O papel é decidido ao colocar e não muda depois. A entrada recebe só por trás (sem curva) e manda os itens para a Esteira Subterrânea à frente; a saída entrega à frente como uma esteira.
+- **Túnel:** bloco na superfície, com direção (gira com `R`). Colocado sem nada atrás, vira **entrada** (círculo branco); colocado na ponta de uma corrente de Esteiras Subterrâneas que aponta para ele (ou de um Filtro Subterrâneo, ou com um Divisor Subterrâneo atrás, ver [Roteamento subterrâneo](#roteamento-subterrâneo)), vira **saída** (círculo preto). O papel é decidido ao colocar e não muda depois. A entrada recebe só por trás (sem curva) e manda os itens para a Esteira Subterrânea à frente; a saída entrega à frente como uma esteira.
 - **Esteira Subterrânea:** gasta **1 item por tile** e fica numa camada própria, embaixo da terra. O tile continua livre para o jogo: plantações, caminhos, cercas, baús e até construções por cima não interferem. Não pode ficar na água nem em tiles que o mapa não permite (paredes, penhascos), nem embaixo de um Túnel.
 - **Como uma esteira:** uma pilha por tile, sentido único, faz **curva** sozinha (gira com `R` antes de colocar). Sem comprimento máximo: o custo de 1 item por tile já limita.
 - **Velocidade:** a do tier 2 (2 tiles/s), em toda a corrente e nas duas pontas do Túnel. Construir embaixo da terra é mais complexo, então não é tão rápido quanto a Expressa.

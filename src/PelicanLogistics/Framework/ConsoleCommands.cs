@@ -82,8 +82,8 @@ internal sealed class ConsoleCommands
         report.AppendLine(this.helper.Translation.Get("command.dump.header", new { location = key, count = grid.TotalCount }).ToString());
         foreach (LogisticsNode node in grid.Nodes.OrderBy(n => n.Position.Y).ThenBy(n => n.Position.X))
             report.AppendLine("  " + Describe(node));
-        foreach (UndergroundSegmentNode segment in grid.UndergroundNodes.OrderBy(n => n.Position.Y).ThenBy(n => n.Position.X))
-            report.AppendLine("  " + Describe(segment));
+        foreach (LogisticsNode node in grid.UndergroundNodes.OrderBy(n => n.Position.Y).ThenBy(n => n.Position.X))
+            report.AppendLine("  " + Describe(node));
 
         this.monitor.Log(report.ToString().TrimEnd(), LogLevel.Info);
     }
@@ -106,8 +106,8 @@ internal sealed class ConsoleCommands
         var report = new StringBuilder();
         if (node != null)
             report.AppendLine(this.helper.Translation.Get("command.inspect.node", new { node = Describe(node) }).ToString());
-        if (this.registry.GetSegment(location, pos) is { } segment)
-            report.AppendLine(this.helper.Translation.Get("command.inspect.node", new { node = Describe(segment) }).ToString());
+        if (this.registry.GetUnderground(location, pos) is { } below)
+            report.AppendLine(this.helper.Translation.Get("command.inspect.node", new { node = Describe(below) }).ToString());
 
         if (endpoint is MachineEndpoint machine)
         {
@@ -169,7 +169,7 @@ internal sealed class ConsoleCommands
                 line.Append($" role={tunnel.Role}");
                 break;
             case UndergroundSegmentNode segment:
-                line.Append($" input={segment.InputSide} (subterrânea)");
+                line.Append($" input={segment.InputSide}");
                 break;
             case FilterNode filter:
                 line.Append($" rule={DescribeRule(filter.Rule)}");
@@ -182,6 +182,8 @@ internal sealed class ConsoleCommands
 
         if (node.Accessory != AccessoryKind.None)
             line.Append($" accessory={node.Accessory}");
+        if (node.Layer == NodeLayer.Underground)
+            line.Append(" (subterrâneo)");
 
         // A mão do Inseridor aparece como "hand=[...]"; os espaços das esteiras, só como "[...]".
         string prefix = node is InserterNode ? " hand=" : " ";

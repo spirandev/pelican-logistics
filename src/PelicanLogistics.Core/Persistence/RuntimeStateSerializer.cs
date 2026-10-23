@@ -35,10 +35,8 @@ public static class RuntimeStateSerializer
                 continue;
 
             var gridState = new GridRuntimeState();
-            foreach (LogisticsNode node in grid.Nodes)
-                gridState.Nodes.Add(ExportNode(node, NodeRuntimeState.SurfaceLayer, register));
-            foreach (UndergroundSegmentNode segment in grid.UndergroundNodes)
-                gridState.Nodes.Add(ExportNode(segment, NodeRuntimeState.UndergroundLayer, register));
+            foreach (LogisticsNode node in grid.Nodes.Concat(grid.UndergroundNodes))
+                gridState.Nodes.Add(ExportNode(node, register));
 
             foreach ((TilePos pos, VirtualSlots slots) in grid.MachineSlots.Entries)
             {
@@ -122,7 +120,7 @@ public static class RuntimeStateSerializer
         };
     }
 
-    private static NodeRuntimeState ExportNode(LogisticsNode node, int layer, Func<ILogisticsItem, int> register)
+    private static NodeRuntimeState ExportNode(LogisticsNode node, Func<ILogisticsItem, int> register)
     {
         (int input, int output) = node.ExportPointers();
         var nodeState = new NodeRuntimeState
@@ -130,7 +128,7 @@ public static class RuntimeStateSerializer
             X = node.Position.X,
             Y = node.Position.Y,
             Kind = node.Kind,
-            Layer = layer,
+            Layer = (int)node.Layer,
             Cooldown = node.ExportCooldown(),
             InputPointer = input,
             OutputPointer = output,

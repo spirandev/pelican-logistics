@@ -15,9 +15,9 @@ namespace PelicanLogistics.Framework.Input;
 
 /// <summary>
 /// Rotação dos blocos e seta fantasma (plano mestre D1). Segurando um bloco do mod, a tecla gira a direção
-/// de colocação; com a mão livre e o cursor sobre um bloco direcional, gira o bloco. A Esteira Subterrânea (objeto)
-/// também usa a direção de colocação, e com o Capacete de Engenheiro na cabeça e a mão livre, `R` gira a Esteira
-/// Subterrânea sob o cursor quando não há bloco na superfície.
+/// de colocação; com a mão livre e o cursor sobre um bloco direcional, gira o bloco. A Esteira e o Filtro Subterrâneos
+/// (objetos) também usam a direção de colocação, e com o Capacete de Engenheiro na cabeça e a mão livre, `R` gira a
+/// Esteira ou o Filtro Subterrâneo sob o cursor quando não há bloco na superfície. O Divisor Subterrâneo não tem direção.
 /// </summary>
 internal sealed class PlacementController
 {
@@ -62,7 +62,7 @@ internal sealed class PlacementController
         LogisticsNode? node = this.registry.GetNode(location, pos);
         bool rotated = node != null
             ? IsDirectional(node) && this.registry.Rotate(location, pos)
-            : EngineerHelmet.IsWorn && this.registry.RotateSegment(location, pos);
+            : EngineerHelmet.IsWorn && this.registry.RotateUnderground(location, pos);
         if (rotated)
             this.helper.Input.SuppressActiveKeybinds(this.config.RotateKey);
     }
@@ -72,7 +72,6 @@ internal sealed class PlacementController
     {
         if (!Context.IsWorldReady || !IsHoldingDirectionalBlock())
             return;
-
 
         Vector2 tile = this.helper.Input.GetCursorPosition().Tile;
         Vector2 topLeft = Game1.GlobalToLocal(Game1.viewport, tile * Game1.tileSize);
@@ -88,11 +87,12 @@ internal sealed class PlacementController
             GhostDepth);
     }
 
-    /// <summary>Segurando um bloco direcional do mod ou uma Esteira Subterrânea.</summary>
+    /// <summary>Segurando um bloco direcional do mod, ou uma Esteira ou um Filtro Subterrâneo.</summary>
     private static bool IsHoldingDirectionalBlock()
     {
         return Game1.player?.ActiveObject is SObject obj
-            && ((ItemIds.IsOurBlock(obj) && ItemIds.IsDirectional(obj.ItemId)) || ItemIds.IsUndergroundBelt(obj));
+            && ((ItemIds.IsOurBlock(obj) && ItemIds.IsDirectional(obj.ItemId))
+                || (ItemIds.IsUndergroundItem(obj) && ItemIds.IsUndergroundDirectional(obj.ItemId)));
     }
 
     /// <summary>Nós sem direção (Divisor) não giram.</summary>

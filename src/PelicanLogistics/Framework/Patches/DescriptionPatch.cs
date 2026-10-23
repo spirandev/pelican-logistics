@@ -10,7 +10,7 @@ namespace PelicanLogistics.Framework.Patches;
 
 /// <summary>
 /// Postfix em <c>Object.getDescription()</c>: com o Capacete de Engenheiro ativo, a descrição dos itens do mod (blocos,
-/// acessórios e Esteira Subterrânea) ganha as linhas técnicas (README "Capacete de Engenheiro"). O jogo não guarda a
+/// acessórios e itens subterrâneos) ganha as linhas técnicas (README "Capacete de Engenheiro"). O jogo não guarda a
 /// descrição de objetos em cache (ela é montada a cada chamada), então pôr ou tirar o capacete muda a dica na hora.
 /// </summary>
 internal static class DescriptionPatch

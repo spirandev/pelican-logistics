@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.Xna.Framework;
+using PelicanLogistics.Core.Filters;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
 using PelicanLogistics.Core.Machines;
@@ -88,7 +89,7 @@ internal sealed class WorldRegistry
                 }
 
                 // Depois dos blocos, para a regra "nada embaixo de um Túnel" valer.
-                count += this.LoadSegments(location);
+                count += this.LoadUnderground(location);
                 return true;
             },
             true,   // includeInteriors: interiores de construções (celeiros, galpões, estufa...)
@@ -131,7 +132,7 @@ internal sealed class WorldRegistry
             NodeFactory.WriteFacing(obj, facing);
             NodeFactory.ResetConfig(obj);
 
-            // O Túnel vira entrada ou saída conforme a Esteira Subterrânea atrás dele (plano mestre D21).
+            // O Túnel vira entrada ou saída conforme o bloco subterrâneo atrás dele (plano mestre D21).
             if (obj.ItemId == ItemIds.Tunnel)
                 NodeFactory.WriteTunnelRole(obj, TunnelRules.DecideRole(this.World.GetOrCreate(KeyOf(location)), ToTilePos(tile), facing));
 
@@ -150,56 +151,82 @@ internal sealed class WorldRegistry
         return this.World.Get(KeyOf(location))?.MachineSlots.Get(pos);
     }
 
-    /// <summary>A Esteira Subterrânea do tile, ou null.</summary>
-    public UndergroundSegmentNode? GetSegment(GameLocation location, TilePos pos)
+    /// <summary>O bloco subterrâneo do tile (Esteira, Filtro ou Divisor Subterrâneo), ou null.</summary>
+    public LogisticsNode? GetUnderground(GameLocation location, TilePos pos)
     {
         return this.World.Get(KeyOf(location))?.GetUnderground(pos);
     }
 
     /// <summary>
-    /// Cria uma Esteira Subterrânea no tile e grava o layout no <c>modData</c> do local. Retorna false se o tile já tem
-    /// uma ou tem um Túnel (as regras do mapa ficam com quem chama).
+    /// Cria no tile o bloco subterrâneo do item (ID não qualificado de <see cref="ItemIds.AllUnderground"/>), virado para
+    /// 'facing' (o Divisor ignora), com a regra vazia no filtro, e grava o layout no <c>modData</c> do local. Retorna false
+    /// se o tile já tem um bloco subterrâneo ou tem um Túnel (as regras do mapa ficam com quem chama).
     /// </summary>
-    public bool TryPlaceSegment(GameLocation location, TilePos pos, Direction facing)
+    public bool TryPlaceUnderground(GameLocation location, TilePos pos, string itemId, Direction facing)
     {
         string key = KeyOf(location);
         LogisticsGrid grid = this.World.GetOrCreate(key);
-        if (!grid.CanPlaceSegment(pos))
+        if (!grid.CanPlaceUnderground(pos))
             return false;
 
-        grid.AddUnderground(new UndergroundSegmentNode(pos, facing));
+        grid.AddUnderground(itemId switch
+        {
+            ItemIds.UndergroundBelt => new UndergroundSegmentNode(pos, facing),
+            ItemIds.UndergroundSplitter => new SplitterNode(pos),
+            ItemIds.UndergroundFilterCommon => new FilterNode(pos, facing, new CommonFilterRule()),
+            ItemIds.UndergroundFilterComplete => new FilterNode(pos, facing, new CompleteFilterRule()),
+            _ => throw new ArgumentException($"{itemId} não é um item subterrâneo.", nameof(itemId)),
+        });
         this.locations[key] = location;
-        SaveSegments(location, grid);
+        SaveUnderground(location, grid);
         return true;
     }
 
-    /// <summary>Remove a Esteira Subterrânea, solta no chão o item que estava nela e grava o layout. Retorna false se não havia.</summary>
-    public bool RemoveSegment(GameLocation location, TilePos pos)
+    /// <summary>
+    /// Remove o bloco subterrâneo, solta no chão o item que estava nele e grava o layout. Retorna o item subterrâneo daquele
+    /// bloco (ID não qualificado), ou null se não havia bloco.
+    /// </summary>
+    public string? RemoveUnderground(GameLocation location, TilePos pos)
     {
         LogisticsGrid? grid = this.World.Get(KeyOf(location));
-        if (grid?.GetUnderground(pos) == null)
-            return false;
+        LogisticsNode? node = grid?.GetUnderground(pos);
+        if (grid == null || node == null)
+            return null;
 
         DropItems(location, ToVector(pos), grid.RemoveUnderground(pos).Items);
-        SaveSegments(location, grid);
-        return true;
+        SaveUnderground(location, grid);
+        return ItemIds.UndergroundItemOf(node);
     }
 
-    /// <summary>Gira a Esteira Subterrânea no sentido horário e grava o layout. Retorna false se não havia.</summary>
-    public bool RotateSegment(GameLocation location, TilePos pos)
+    /// <summary>
+    /// Gira a Esteira ou o Filtro Subterrâneo no sentido horário e grava o layout. Retorna false se não havia bloco ou se
+    /// ele não tem direção (Divisor).
+    /// </summary>
+    public bool RotateUnderground(GameLocation location, TilePos pos)
     {
         LogisticsGrid? grid = this.World.Get(KeyOf(location));
-        UndergroundSegmentNode? segment = grid?.GetUnderground(pos);
-        if (grid == null || segment == null)
+        LogisticsNode? node = grid?.GetUnderground(pos);
+        if (grid == null || node is null or SplitterNode)
             return false;
 
-        segment.Facing = segment.Facing.Clockwise();
+        node.Facing = node.Facing.Clockwise();
         grid.MarkDirty();
-        SaveSegments(location, grid);
+        SaveUnderground(location, grid);
         return true;
     }
 
-    /// <summary>True se dá para colocar um Túnel no tile (não há Esteira Subterrânea embaixo, plano mestre D21).</summary>
+    /// <summary>Troca a regra do Filtro Subterrâneo do tile e grava o layout (a interface do filtro chama a cada alteração).</summary>
+    public void SetUndergroundFilterRule(GameLocation location, TilePos pos, IFilterRule rule)
+    {
+        LogisticsGrid? grid = this.World.Get(KeyOf(location));
+        if (grid?.GetUnderground(pos) is not FilterNode filter)
+            return;
+
+        filter.Rule = rule;
+        SaveUnderground(location, grid);
+    }
+
+    /// <summary>True se dá para colocar um Túnel no tile (não há bloco subterrâneo embaixo, plano mestre D21, D22).</summary>
     public bool CanPlaceTunnel(GameLocation location, TilePos pos)
     {
         LogisticsGrid? grid = this.World.Get(KeyOf(location));
@@ -293,27 +320,27 @@ internal sealed class WorldRegistry
     }
 
     /// <summary>
-    /// Recria as Esteiras Subterrâneas do local a partir do <c>modData</c> dele (plano mestre D19). Uma posição que não
-    /// aceita mais Esteira Subterrânea (ex.: um Túnel em cima) é descartada, com aviso no log. Retorna quantas recriou.
+    /// Recria os blocos subterrâneos do local a partir do <c>modData</c> dele (plano mestre D19, D22). Uma posição que não
+    /// aceita mais bloco subterrâneo (ex.: um Túnel em cima) é descartada, com aviso no log. Retorna quantos recriou.
     /// </summary>
-    private int LoadSegments(GameLocation location)
+    private int LoadUnderground(GameLocation location)
     {
-        if (!location.modData.TryGetValue(ModDataKeys.UndergroundSegments, out string? json))
+        if (!location.modData.TryGetValue(ModDataKeys.UndergroundLayout, out string? json))
             return 0;
 
         string key = KeyOf(location);
         LogisticsGrid grid = this.World.GetOrCreate(key);
         int created = 0;
         int skipped = 0;
-        foreach ((TilePos pos, Direction facing) in UndergroundLayoutSerializer.Deserialize(json))
+        foreach (UndergroundBlockLayout block in UndergroundLayoutSerializer.Deserialize(json))
         {
-            if (!grid.CanPlaceSegment(pos))
+            if (!grid.CanPlaceUnderground(block.Position))
             {
                 skipped++;
                 continue;
             }
 
-            grid.AddUnderground(new UndergroundSegmentNode(pos, facing));
+            grid.AddUnderground(block.CreateNode());
             created++;
         }
 
@@ -321,20 +348,20 @@ internal sealed class WorldRegistry
             this.locations[key] = location;
         if (skipped > 0)
         {
-            this.monitor.Log($"{skipped} Esteira(s) Subterrânea(s) inválida(s) em {key} foram descartadas.", LogLevel.Warn);
-            SaveSegments(location, grid);
+            this.monitor.Log($"{skipped} bloco(s) subterrâneo(s) inválido(s) em {key} foram descartados.", LogLevel.Warn);
+            SaveUnderground(location, grid);
         }
 
         return created;
     }
 
-    /// <summary>Grava as Esteiras Subterrâneas da grade no <c>modData</c> do local (sem nenhuma, apaga a chave).</summary>
-    private static void SaveSegments(GameLocation location, LogisticsGrid grid)
+    /// <summary>Grava os blocos subterrâneos da grade no <c>modData</c> do local (sem nenhum, apaga a chave).</summary>
+    private static void SaveUnderground(GameLocation location, LogisticsGrid grid)
     {
         if (grid.UndergroundNodes.Any())
-            location.modData[ModDataKeys.UndergroundSegments] = UndergroundLayoutSerializer.Serialize(grid);
+            location.modData[ModDataKeys.UndergroundLayout] = UndergroundLayoutSerializer.Serialize(grid);
         else
-            location.modData.Remove(ModDataKeys.UndergroundSegments);
+            location.modData.Remove(ModDataKeys.UndergroundLayout);
     }
 
     /// <summary>Coloca no nó recém-criado o acessório gravado no <c>modData</c> (ao carregar o save).</summary>

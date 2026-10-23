@@ -182,7 +182,7 @@ public class UndergroundSegmentNodeTests
 
         Assert.Same(wood, g.BeltAt(6, 0).Slot.Item);
         Assert.Same(stone, g.BeltAt(6, 1).Slot.Item);
-        Assert.All(g.Grid.UndergroundNodes, s => Assert.False(s.IsCurve));
+        Assert.All(g.Grid.UndergroundNodes, s => Assert.False(Assert.IsType<UndergroundSegmentNode>(s).IsCurve));
     }
 
     [Fact]
@@ -208,11 +208,21 @@ public class UndergroundSegmentNodeTests
     [Fact]
     public void Segment_IsNeverPulledFromTheSurface_AndHasTheTier2Speed()
     {
-        var segment = new UndergroundSegmentNode(new TilePos(0, 0), Direction.East);
-        segment.Slot.Put(new FakeItem("wood", 1), Direction.West);
+        // A Esteira Subterrânea oferece o slot (o Divisor Subterrâneo puxa dela), mas o Inseridor da superfície não a enxerga.
+        var chest = new FakeChest();
+        var g = new GridBuilder()
+            .Segment(0, 0, Direction.East)
+            .Inserter(1, 0, Direction.East)
+            .Chest(2, 0, chest);
+        UndergroundSegmentNode segment = g.SegmentAt(0, 0);
+        var wood = new FakeItem("wood", 1);
+        segment.Slot.Put(wood, Direction.West);
         segment.Slot.Advance(Balance.End);
 
-        Assert.Null(segment.GetOutgoingSlot(new TilePos(1, 0)));
+        g.Run(60);
+
+        Assert.Same(wood, segment.Slot.Item);
+        Assert.True(g.InserterAt(1, 0).Hand.IsEmpty);
         Assert.Equal(Balance.BeltSpeedFast, segment.Speed);
         Assert.Equal(NodeKind.UndergroundSegment, segment.Kind);
     }

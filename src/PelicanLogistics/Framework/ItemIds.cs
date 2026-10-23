@@ -30,6 +30,13 @@ internal static class ItemIds
     /// <summary>Esteira Subterrânea: objeto comum não colocável pelo jogo; o mod cria um segmento na camada subterrânea (plano mestre D19).</summary>
     public const string UndergroundBelt = Prefix + "UndergroundBelt";
 
+    /// <summary>Divisor e Filtros Subterrâneos: objetos comuns não colocáveis pelo jogo, como a Esteira Subterrânea (plano mestre D22).</summary>
+    public const string UndergroundSplitter = Prefix + "UndergroundSplitter";
+
+    public const string UndergroundFilterCommon = Prefix + "UndergroundFilterCommon";
+
+    public const string UndergroundFilterComplete = Prefix + "UndergroundFilterComplete";
+
     /// <summary>Capacete de Engenheiro: chapéu (<c>Data/Hats</c>), plano mestre D18.</summary>
     public const string EngineerHelmet = Prefix + "EngineerHelmet";
 
@@ -52,7 +59,16 @@ internal static class ItemIds
     public static readonly IReadOnlyList<string> AllAccessories = new[] { Bridge, Regulator };
 
     /// <summary>Todos os objetos comuns do mod (<c>Data/Objects</c>), na ordem da loja e do <c>pl_give</c>.</summary>
-    public static readonly IReadOnlyList<string> AllObjects = new[] { Bridge, Regulator, UndergroundBelt };
+    public static readonly IReadOnlyList<string> AllObjects = new[]
+    {
+        Bridge, Regulator, UndergroundBelt, UndergroundSplitter, UndergroundFilterCommon, UndergroundFilterComplete,
+    };
+
+    /// <summary>Os itens subterrâneos (plano mestre D22): viram blocos da camada subterrânea pelo clique.</summary>
+    public static readonly IReadOnlyList<string> AllUnderground = new[]
+    {
+        UndergroundBelt, UndergroundSplitter, UndergroundFilterCommon, UndergroundFilterComplete,
+    };
 
     /// <summary><see cref="AllBlocks"/> para consulta rápida (usado no desenho, a cada quadro).</summary>
     private static readonly HashSet<string> Blocks = new(AllBlocks, StringComparer.Ordinal);
@@ -62,6 +78,9 @@ internal static class ItemIds
 
     /// <summary>IDs qualificados de <see cref="AllObjects"/>.</summary>
     private static readonly HashSet<string> QualifiedObjects = new(AllObjects.Select(QualifiedObject), StringComparer.Ordinal);
+
+    /// <summary>IDs qualificados de <see cref="AllUnderground"/>.</summary>
+    private static readonly HashSet<string> QualifiedUnderground = new(AllUnderground.Select(QualifiedObject), StringComparer.Ordinal);
 
     /// <summary>IDs qualificados de <see cref="AllAccessories"/>.</summary>
     private static readonly HashSet<string> QualifiedAccessories = new(AllAccessories.Select(QualifiedObject), StringComparer.Ordinal);
@@ -82,13 +101,16 @@ internal static class ItemIds
         [Bridge] = "bridge",
         [Regulator] = "regulator",
         [UndergroundBelt] = "underground-belt",
+        [UndergroundSplitter] = "underground-splitter",
+        [UndergroundFilterCommon] = "underground-filter-common",
+        [UndergroundFilterComplete] = "underground-filter-complete",
         [EngineerHelmet] = "engineer-helmet",
     };
 
     /// <summary>ID qualificado de um bloco (Big Craftable).</summary>
     public static string Qualified(string id) => BigCraftableTypePrefix + id;
 
-    /// <summary>ID qualificado de um objeto comum do mod (acessórios e Esteira Subterrânea).</summary>
+    /// <summary>ID qualificado de um objeto comum do mod (acessórios e itens subterrâneos).</summary>
     public static string QualifiedObject(string id) => ObjectTypePrefix + id;
 
     /// <summary>ID qualificado do Capacete de Engenheiro.</summary>
@@ -112,16 +134,38 @@ internal static class ItemIds
         return item is SObject obj && !obj.bigCraftable.Value && QualifiedAccessories.Contains(obj.QualifiedItemId);
     }
 
-    /// <summary>True se o item é um objeto comum do mod (Ponte, Regulador ou Esteira Subterrânea).</summary>
+    /// <summary>True se o item é um objeto comum do mod (Ponte, Regulador ou item subterrâneo).</summary>
     public static bool IsOurObject(Item? item)
     {
         return item is SObject obj && !obj.bigCraftable.Value && QualifiedObjects.Contains(obj.QualifiedItemId);
     }
 
-    /// <summary>True se o item é a Esteira Subterrânea (o objeto que o mod transforma em segmento).</summary>
-    public static bool IsUndergroundBelt(Item? item)
+    /// <summary>
+    /// True se o item é um item subterrâneo: Esteira, Divisor, Filtro Comum ou Filtro Completo Subterrâneo (o objeto que o
+    /// mod transforma em bloco da camada subterrânea).
+    /// </summary>
+    public static bool IsUndergroundItem(Item? item)
     {
-        return item is SObject obj && !obj.bigCraftable.Value && obj.QualifiedItemId == QualifiedObject(UndergroundBelt);
+        return item is SObject obj && !obj.bigCraftable.Value && QualifiedUnderground.Contains(obj.QualifiedItemId);
+    }
+
+    /// <summary>True se o item subterrâneo (ID não qualificado) tem direção: todos menos o Divisor Subterrâneo.</summary>
+    public static bool IsUndergroundDirectional(string itemId)
+    {
+        return itemId is UndergroundBelt or UndergroundFilterCommon or UndergroundFilterComplete;
+    }
+
+    /// <summary>O item subterrâneo (ID não qualificado) que corresponde ao bloco subterrâneo.</summary>
+    public static string UndergroundItemOf(LogisticsNode node)
+    {
+        return node switch
+        {
+            UndergroundSegmentNode => UndergroundBelt,
+            SplitterNode => UndergroundSplitter,
+            FilterNode { IsComplete: true } => UndergroundFilterComplete,
+            FilterNode => UndergroundFilterCommon,
+            _ => throw new ArgumentException($"{node.Kind} não é um bloco subterrâneo.", nameof(node)),
+        };
     }
 
     /// <summary>True se o item é o Capacete de Engenheiro.</summary>

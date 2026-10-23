@@ -368,6 +368,73 @@ public class FullFlowTests
         Assert.True(north.CountTotal() > 0 && south.CountTotal() > 0);
     }
 
+    [Fact]
+    public void UndergroundSorter_ThreeOutputsFourItemTypes_TunnelsAtTheEnds_ConservesItemsFor3000Ticks()
+    {
+        // Baú misto → Inseridor → entrada → Esteiras Subterrâneas → Divisor Subterrâneo. Saídas: norte = Filtro Comum
+        // Subterrâneo (madeira), leste = Filtro Completo Subterrâneo (lista branca: pedra e argila), sul = Esteira
+        // Subterrânea (resto). Cada saída: Esteiras Subterrâneas → saída de Túnel → Inseridor → baú. Tudo embaixo de uma
+        // linha de esteiras da superfície que não interfere.
+        const string wood = "(O)388";
+        const string stone = "(O)390";
+        const string clay = "(O)330";
+        var source = new FakeChest(
+            36,
+            new FakeItem(wood, 20),
+            new FakeItem(stone, 15),
+            new FakeItem(FakeMachine.Ids.Coal, 12),
+            new FakeItem(clay, 9),
+            new FakeItem(wood, 7));
+        var woodChest = new FakeChest();
+        var stoneClayChest = new FakeChest();
+        var restChest = new FakeChest();
+        var stoneAndClay = new CompleteFilterRule { ItemIds = { stone, clay } };
+        var g = new GridBuilder()
+            .Chest(-2, 5, source)
+            .Inserter(-1, 5, Direction.East, TransferTier.Stack)
+            .Tunnel(0, 5, Direction.East)
+            .Segments(1, 5, Direction.East, 4)
+            .UndergroundSplitter(5, 5)
+            .UndergroundFilter(5, 4, Direction.North, wood)
+            .Segments(5, 3, Direction.North, 2)
+            .Tunnel(5, 1, Direction.North)
+            .Inserter(5, 0, Direction.North, TransferTier.Stack)
+            .Chest(5, -1, woodChest)
+            .UndergroundFilter(6, 5, Direction.East, stoneAndClay)
+            .Segments(7, 5, Direction.East, 3)
+            .Tunnel(10, 5, Direction.East)
+            .Inserter(11, 5, Direction.East, TransferTier.Stack)
+            .Chest(12, 5, stoneClayChest)
+            .Segments(5, 6, Direction.South, 3)
+            .Tunnel(5, 9, Direction.South)
+            .Inserter(5, 10, Direction.South, TransferTier.Stack)
+            .Chest(5, 11, restChest)
+            .Belt(1, 5, Direction.West)
+            .Belt(2, 5, Direction.West)
+            .Belt(3, 5, Direction.West);
+
+        int total = source.CountTotal();
+        Assert.Equal(63, total);
+        for (int tick = 0; tick < 3000; tick++)
+        {
+            g.Run(1);
+            Assert.Equal(total, source.CountTotal() + g.CountInTransit() + woodChest.CountTotal() + stoneClayChest.CountTotal() + restChest.CountTotal());
+        }
+
+        Assert.Equal(TunnelRole.Exit, g.TunnelAt(5, 1).Role);
+        Assert.Equal(TunnelRole.Exit, g.TunnelAt(10, 5).Role);
+        Assert.Equal(TunnelRole.Exit, g.TunnelAt(5, 9).Role);
+        Assert.Equal(0, source.CountTotal());
+        Assert.Equal(0, g.CountInTransit());
+        Assert.Equal(27, woodChest.CountById(wood));
+        Assert.Equal(27, woodChest.CountTotal());
+        Assert.Equal(15, stoneClayChest.CountById(stone));
+        Assert.Equal(9, stoneClayChest.CountById(clay));
+        Assert.Equal(24, stoneClayChest.CountTotal());
+        Assert.Equal(12, restChest.CountById(FakeMachine.Ids.Coal));
+        Assert.Equal(12, restChest.CountTotal());
+    }
+
     private static int CountInTransit(GridBuilder g, string id)
     {
         return g.Grid.Nodes.SelectMany(n => n.Slots).Where(s => s.Item?.QualifiedItemId == id).Sum(s => s.Item!.Count);

@@ -57,8 +57,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Mod: Túnel (bloco), Esteira Subterrânea (objeto que vira um segmento embaixo da terra, sem ocupar o tile) e Capacete de Engenheiro (chapéu em `Data/Hats`), à venda no Clint por 0g e no `pl_give`.
 - Mod: com o Capacete de Engenheiro na cabeça, colocar, retirar (com a Esteira Subterrânea ou a mão livre) e girar Esteiras Subterrâneas; o Túnel só pode ser colocado com o capacete (patch em `Object.canBePlacedHere`). As Esteiras Subterrâneas ficam no `modData` do local.
 - Mod: com o capacete na cabeça ou na mão, as Esteiras Subterrâneas e os itens nelas aparecem semitransparentes, a prévia do Túnel mostra se ele vira entrada ou saída e as descrições dos itens do mod ganham linhas técnicas (patch em `Object.getDescription`).
+- Core: a camada subterrânea aceita Filtros e Divisores (`FilterNode` e `SplitterNode`, as mesmas classes da superfície). Cada nó sabe a camada (`NodeLayer`) e os vizinhos são buscados na camada dele (`LogisticsGrid.NeighborOf`, `TickContext.OutgoingSlot`/`Deliver`), com as regras do Túnel num só lugar: nada passa entre as camadas fora dos Túneis.
+- Core: o `UndergroundLayoutSerializer` guarda o tipo de cada bloco subterrâneo e a regra dos filtros (`UndergroundBlockLayout`); entradas antigas sem tipo são Esteiras Subterrâneas. Placeholders do Filtro e do Divisor Subterrâneos (base cinza escura).
+- Mod: Divisor Subterrâneo, Filtro Comum Subterrâneo e Filtro Completo Subterrâneo (objetos de `Data/Objects`, não colocáveis pelo jogo), à venda no Clint por 0g e no `pl_give`. Com o capacete na cabeça: segurando qualquer item subterrâneo, colocar num tile vazio e retirar (devolvendo o item daquele bloco); com a mão livre, abrir a interface do Filtro Subterrâneo ou retirar a Esteira e o Divisor Subterrâneos; `R` gira a Esteira e o Filtro Subterrâneos.
+- Mod: com o capacete ativo, os Filtros (com o ícone do item no Comum) e os Divisores Subterrâneos aparecem semitransparentes, com os itens dentro deles; descrições técnicas, `pl_dump` e `pl_inspect` com os blocos novos.
 
 ### Alterado
+- O Túnel vira saída quando o bloco subterrâneo atrás dele entrega nele: uma Esteira ou um Filtro Subterrâneo apontando para ele, ou um Divisor Subterrâneo.
+- `pl_dump`: a marca dos blocos subterrâneos passa a ser `(subterrâneo)`, no fim dos campos, para todos os tipos.
 - Interfaces: o botão OK fica no topo, ao lado do título, e a caixa se ajusta à linha mais larga (o inventário dos filtros).
 - O Inseridor se conecta ao Divisor: apontando para ele é uma entrada (o Divisor puxa da mão), com a traseira virada para ele é uma saída (o Divisor entrega na mão só o que o Inseridor pegaria). Um Divisor na lateral do Inseridor continua sem conexão.
 - Interfaces em colunas: a do Filtro Completo usa duas colunas para caber em 1280×720 e 1366×768.

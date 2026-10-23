@@ -8,12 +8,13 @@ namespace PelicanLogistics.Core.Nodes;
 
 /// <summary>
 /// Túnel (README "Túnel e Esteira Subterrânea"): bloco da superfície que liga a superfície à camada subterrânea. A
-/// entrada recebe por trás e entrega à <see cref="UndergroundSegmentNode"/> do tile à frente; a saída recebe da Esteira
-/// Subterrânea do tile atrás (que aponta para ela) e entrega à frente como uma esteira.
+/// entrada recebe por trás e entrega ao bloco subterrâneo do tile à frente; a saída recebe do bloco subterrâneo do tile
+/// atrás (que entrega nela) e entrega à frente como uma esteira.
 /// </summary>
 /// <remarks>
 /// Anda com <see cref="Balance.UndergroundSpeed"/>. A entrada recebe só por trás (sem curva) e nunca junta pilhas; a saída
-/// não recebe de nenhum nó da superfície. Sem Esteira Subterrânea que aceite, o item para no fim da entrada.
+/// não recebe de nenhum nó da superfície. A entrada empurra na Esteira ou no Filtro Subterrâneo à frente, e o Divisor
+/// Subterrâneo à frente a puxa (<see cref="GetUndergroundOutgoingSlot"/>). Sem bloco que aceite, o item para no fim da entrada.
 /// </remarks>
 public sealed class TunnelNode : LogisticsNode
 {
@@ -34,8 +35,11 @@ public sealed class TunnelNode : LogisticsNode
     /// <summary>O slot do próprio tile.</summary>
     public TransitSlot Slot { get; } = new();
 
-    /// <summary>Tile à frente: o da Esteira Subterrânea (entrada) ou o do nó que recebe na superfície (saída).</summary>
+    /// <summary>Tile à frente: o do bloco subterrâneo (entrada) ou o do nó que recebe na superfície (saída).</summary>
     public TilePos FrontPosition => this.Position.Offset(this.Facing);
+
+    /// <summary>O tile do bloco subterrâneo ligado a este Túnel: à frente da entrada, atrás da saída (plano mestre D22).</summary>
+    public TilePos UndergroundPosition => this.Role == TunnelRole.Entrance ? this.FrontPosition : this.Position.Offset(this.InputSide);
 
     public override IEnumerable<TransitSlot> Slots => new[] { this.Slot };
 
@@ -45,7 +49,7 @@ public sealed class TunnelNode : LogisticsNode
         return this.Role == TunnelRole.Exit && neighbor == this.FrontPosition;
     }
 
-    /// <summary>Entrada: a Esteira Subterrânea à frente. Saída: o nó da superfície à frente.</summary>
+    /// <summary>Entrada: o bloco subterrâneo à frente. Saída: o nó da superfície à frente.</summary>
     public override IEnumerable<LogisticsNode> Downstream(LogisticsGrid grid)
     {
         LogisticsNode? next = this.Role == TunnelRole.Entrance ? grid.GetUnderground(this.FrontPosition) : grid.Get(this.FrontPosition);
@@ -90,26 +94,42 @@ public sealed class TunnelNode : LogisticsNode
             return;
         }
 
-        // Entrada: entrega à Esteira Subterrânea à frente, pelo lado virado para o Túnel.
-        UndergroundSegmentNode? segment = ctx.UndergroundAt(this.FrontPosition);
+        // Entrada: entrega ao bloco subterrâneo à frente, pelo lado virado para o Túnel. Um Divisor não recebe empurrado:
+        // o item fica parado no fim até ele puxar.
+        LogisticsNode? below = ctx.UndergroundAt(this.FrontPosition);
         ILogisticsItem item = this.Slot.Item!;
         int before = item.Count;
-        if (segment != null && segment.Accept(this.Facing.Opposite(), item, ctx) == before)
+        if (below != null && below.Accept(this.Facing.Opposite(), item, ctx) == before)
             this.Slot.Clear();
         else
             this.Slot.Blocked = true;
     }
 
+    /// <summary>True se a saída pode receber agora a pilha do bloco subterrâneo atrás dela.</summary>
+    internal bool CanReceiveFromUnderground()
+    {
+        return this.Role == TunnelRole.Exit && this.Slot.IsEmpty;
+    }
+
     /// <summary>
-    /// A Esteira Subterrânea atrás entrega a pilha inteira na saída. Retorna false (e não guarda nada) se este Túnel não
+    /// O bloco subterrâneo atrás entrega a pilha inteira na saída. Retorna false (e não guarda nada) se este Túnel não
     /// é uma saída ou se o <see cref="Slot"/> está ocupado.
     /// </summary>
     internal bool ReceiveFromUnderground(ILogisticsItem item)
     {
-        if (this.Role != TunnelRole.Exit || !this.Slot.IsEmpty)
+        if (!this.CanReceiveFromUnderground())
             return false;
 
         this.Slot.Put(item, this.InputSide);
         return true;
+    }
+
+    /// <summary>
+    /// O slot da entrada, para o Divisor Subterrâneo à frente dela, que puxa. Nunca é oferecido a nós da superfície (só o
+    /// <see cref="TickContext.OutgoingSlot"/> de um bloco subterrâneo chega aqui).
+    /// </summary>
+    internal TransitSlot? GetUndergroundOutgoingSlot()
+    {
+        return this.Role == TunnelRole.Entrance && this.Slot.Item != null ? this.Slot : null;
     }
 }

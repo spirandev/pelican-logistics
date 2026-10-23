@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PelicanLogistics.Core.Geometry;
 using PelicanLogistics.Core.Items;
@@ -8,7 +9,8 @@ namespace PelicanLogistics.Core.Nodes;
 /// <summary>
 /// Base das esteiras (<see cref="BeltNode"/> na superfície e <see cref="UndergroundSegmentNode"/> embaixo da terra): uma
 /// pilha por tile, sentido único, uma única saída (README "Regras de conexão"). Recebe só pelo <see cref="InputSide"/>: a
-/// traseira, ou uma lateral quando vira curva.
+/// traseira, ou uma lateral quando vira curva. Entrega ao vizinho da frente na própria camada
+/// (<see cref="LogisticsGrid.NeighborOf"/>).
 /// </summary>
 public abstract class ConveyorNode : LogisticsNode
 {
@@ -38,6 +40,17 @@ public abstract class ConveyorNode : LogisticsNode
     public override bool ProvidesTo(TilePos neighbor)
     {
         return neighbor == this.FrontPosition;
+    }
+
+    public override IEnumerable<LogisticsNode> Downstream(LogisticsGrid grid)
+    {
+        LogisticsNode? front = grid.NeighborOf(this, this.Facing);
+        return front == null ? Array.Empty<LogisticsNode>() : new[] { front };
+    }
+
+    public override TransitSlot? GetOutgoingSlot(TilePos target)
+    {
+        return target == this.FrontPosition && this.Slot.Item != null ? this.Slot : null;
     }
 
     public override bool CanReceiveFrom(Direction entrySide)
@@ -70,12 +83,10 @@ public abstract class ConveyorNode : LogisticsNode
         return 0;
     }
 
+    /// <summary>A pilha chegou ao fim do tile: tenta entregá-la à frente. Se não sair toda, o slot fica <see cref="TransitSlot.Blocked"/>.</summary>
     public override void Update(TickContext ctx)
     {
         if (!this.Slot.IsEmpty && this.Slot.Advance(this.Speed))
-            this.DeliverForward(ctx);
+            ctx.PushForward(this, this.Slot, this.Facing);
     }
-
-    /// <summary>A pilha chegou ao fim do tile: tenta entregá-la à frente. Se não sair toda, o slot fica <see cref="TransitSlot.Blocked"/>.</summary>
-    protected abstract void DeliverForward(TickContext ctx);
 }

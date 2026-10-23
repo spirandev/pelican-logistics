@@ -121,12 +121,13 @@ public static class PlaceholderPainter
 
     /// <summary>
     /// Filtro: base cinza de esteira com um losango verde e uma seta branca para cima. O Filtro Completo é verde escuro
-    /// com um losango duplo (um contorno escuro dentro). O ícone do item do Filtro Comum é desenhado pelo adaptador.
+    /// com um losango duplo (um contorno escuro dentro). O ícone do item do Filtro Comum é desenhado pelo adaptador. O
+    /// Filtro Subterrâneo ('underground') tem a base cinza escura da Esteira Subterrânea.
     /// </summary>
-    public static PixelBuffer PaintFilter(bool complete)
+    public static PixelBuffer PaintFilter(bool complete, bool underground = false)
     {
         var buffer = new PixelBuffer(SpriteSize, SpriteSize);
-        buffer.FillRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.BeltBasic);
+        buffer.FillRect(0, 0, SpriteSize, SpriteSize, underground ? PlaceholderColors.Underground : PlaceholderColors.BeltBasic);
         buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
 
         Rgba green = complete ? PlaceholderColors.FilterComplete : PlaceholderColors.FilterCommon;
@@ -141,11 +142,14 @@ public static class PlaceholderPainter
         return buffer;
     }
 
-    /// <summary>Divisor: base cinza de esteira com um círculo roxo e 4 saídas (uma faixa roxa até o meio de cada borda).</summary>
-    public static PixelBuffer PaintSplitter()
+    /// <summary>
+    /// Divisor: base cinza de esteira com um círculo roxo e 4 saídas (uma faixa roxa até o meio de cada borda). O Divisor
+    /// Subterrâneo ('underground') tem a base cinza escura da Esteira Subterrânea.
+    /// </summary>
+    public static PixelBuffer PaintSplitter(bool underground = false)
     {
         var buffer = new PixelBuffer(SpriteSize, SpriteSize);
-        buffer.FillRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.BeltBasic);
+        buffer.FillRect(0, 0, SpriteSize, SpriteSize, underground ? PlaceholderColors.Underground : PlaceholderColors.BeltBasic);
         buffer.DrawRect(0, 0, SpriteSize, SpriteSize, PlaceholderColors.Outline);
 
         buffer.FillRect(6, 1, 4, SpriteSize - 2, PlaceholderColors.Splitter);
