@@ -170,27 +170,76 @@ public class PlaceholderPainterTests
     }
 
     [Theory]
-    [InlineData(UndergroundRole.Entrance)]
-    [InlineData(UndergroundRole.Exit)]
-    public void PaintUnderground_IsOpaqueDarkGray_WithWhiteOrBlackCircle_AndArrowPointingNorth(UndergroundRole role)
+    [InlineData(TunnelRole.Entrance)]
+    [InlineData(TunnelRole.Exit)]
+    public void PaintTunnel_IsOpaqueDarkGray_WithWhiteOrBlackCircle_AndArrowPointingNorth(TunnelRole role)
     {
-        PixelBuffer underground = PlaceholderPainter.PaintUnderground(role);
-        Rgba circle = role == UndergroundRole.Entrance ? PlaceholderColors.Mark : PlaceholderColors.UndergroundExit;
+        PixelBuffer tunnel = PlaceholderPainter.PaintTunnel(role);
+        Rgba circle = role == TunnelRole.Entrance ? PlaceholderColors.Mark : PlaceholderColors.TunnelExit;
 
-        Assert.Equal(16 * 16, underground.CountOpaque());
-        Assert.Equal(PlaceholderColors.Underground, underground.Get(2, 13));
-        Assert.Equal(circle, underground.Get(8, 9));
-        Assert.Equal(PlaceholderColors.Outline, underground.Get(8, 4));  // contorno do círculo
-        Assert.Equal(PlaceholderColors.Mark, underground.Get(8, 1));     // ponta da seta, em cima
-        Assert.Equal(PlaceholderColors.Mark, underground.Get(6, 3));
+        Assert.Equal(16 * 16, tunnel.CountOpaque());
+        Assert.Equal(PlaceholderColors.Underground, tunnel.Get(2, 13));
+        Assert.Equal(circle, tunnel.Get(8, 9));
+        Assert.Equal(PlaceholderColors.Outline, tunnel.Get(8, 4));  // contorno do círculo
+        Assert.Equal(PlaceholderColors.Mark, tunnel.Get(8, 1));     // ponta da seta, em cima
+        Assert.Equal(PlaceholderColors.Mark, tunnel.Get(6, 3));
     }
 
     [Fact]
-    public void PaintUnderground_EntranceAndExitDiffer()
+    public void PaintTunnel_EntranceAndExitDiffer()
     {
         Assert.NotEqual(
-            PlaceholderPainter.PaintUnderground(UndergroundRole.Entrance).Get(8, 9),
-            PlaceholderPainter.PaintUnderground(UndergroundRole.Exit).Get(8, 9));
+            PlaceholderPainter.PaintTunnel(TunnelRole.Entrance).Get(8, 9),
+            PlaceholderPainter.PaintTunnel(TunnelRole.Exit).Get(8, 9));
+    }
+
+    [Fact]
+    public void PaintUndergroundSegment_IsOpaqueDarkGray_WithTwoArrows_StraightAndCurve()
+    {
+        PixelBuffer straight = PlaceholderPainter.PaintUndergroundSegment();
+
+        Assert.Equal(16 * 16, straight.CountOpaque());
+        Assert.Equal(PlaceholderColors.Underground, straight.Get(2, 2));
+        Assert.Equal(18, straight.Pixels.Count(p => p == PlaceholderColors.Mark));
+        foreach (bool fromLeft in new[] { true, false })
+        {
+            PixelBuffer curve = PlaceholderPainter.PaintUndergroundSegmentCurve(fromLeft);
+            Assert.Equal(16 * 16, curve.CountOpaque());
+            Assert.Equal(18, curve.Pixels.Count(p => p == PlaceholderColors.Mark));
+            Assert.Equal(PlaceholderColors.Outline, curve.Get(fromLeft ? 1 : 14, 8));
+        }
+    }
+
+    [Fact]
+    public void PaintEngineerHelmet_IsAHatSheet_FourFramesWithTheLampOnlyWhenFacingForwardOrSideways()
+    {
+        PixelBuffer helmet = PlaceholderPainter.PaintEngineerHelmet();
+
+        Assert.Equal(20, helmet.Width);
+        Assert.Equal(80, helmet.Height);
+        for (int frame = 0; frame < 4; frame++)
+        {
+            int top = frame * 20;
+            int opaque = 0;
+            int lamp = 0;
+            for (int y = top; y < top + 20; y++)
+            {
+                for (int x = 0; x < 20; x++)
+                {
+                    Rgba c = helmet.Get(x, y);
+                    if (!c.IsTransparent)
+                        opaque++;
+                    if (c == PlaceholderColors.Mark)
+                        lamp++;
+                }
+            }
+
+            Assert.InRange(opaque, 40, 399);
+            Assert.Equal(frame == 3 ? 0 : 6, lamp);
+            Assert.Equal(PlaceholderColors.Helmet, helmet.Get(10, top + 4));
+            Assert.Equal(PlaceholderColors.HelmetShade, helmet.Get(3, top + 10));
+            Assert.True(helmet.Get(10, top + 15).IsTransparent);
+        }
     }
 
     [Fact]

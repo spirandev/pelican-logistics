@@ -276,9 +276,9 @@ public class FullFlowTests
     }
 
     [Fact]
-    public void Underground_Splitter_AndRegulators_ConserveItems_AndRespectTheLimits()
+    public void Tunnel_Splitter_AndRegulators_ConserveItems_AndRespectTheLimits()
     {
-        // Baú → Inseridor → Esteira Expressa → Subterrânea (por baixo de uma esteira e de um Filtro) → Divisor. Saídas:
+        // Baú → Inseridor → Esteira Expressa → Túnel (2 Esteiras Subterrâneas por baixo de uma esteira e de um Filtro) → Divisor. Saídas:
         // norte = esteira → Inseridor de Pilha + Regulador Geral 50 → baú B; sul = Filtro (pedra) → Inseridor de Pilha +
         // Regulador Por item (pedra 30) → baú D; leste = esteira → Inseridor de Pilha → baú C (excedente).
         const string wood = "(O)388";
@@ -291,10 +291,11 @@ public class FullFlowTests
             .Chest(0, 0, source)
             .Inserter(1, 0, Direction.East)
             .Belt(2, 0, Direction.East, BeltTier.Express)
-            .Underground(3, 0, Direction.East)
+            .Tunnel(3, 0, Direction.East)
             .Belt(4, 0, Direction.North)
             .Filter(5, 0, Direction.South, wood)
-            .Underground(6, 0, Direction.East)
+            .Segments(4, 0, Direction.East, 2)
+            .Tunnel(6, 0, Direction.East)
             .Splitter(7, 0)
             .Belt(7, -1, Direction.North)
             .Inserter(7, -2, Direction.North, TransferTier.Stack)
@@ -317,7 +318,8 @@ public class FullFlowTests
 
         // Com os limites atingidos, um item espera na esteira do norte e uma pedra no filtro do sul (README "Regulador");
         // o resto vai para o leste como excedente.
-        Assert.Same(g.UndergroundAt(6, 0), g.UndergroundAt(3, 0).Partner);
+        Assert.Equal(TunnelRole.Entrance, g.TunnelAt(3, 0).Role);
+        Assert.Equal(TunnelRole.Exit, g.TunnelAt(6, 0).Role);
         Assert.Equal(0, source.CountTotal());
         Assert.Equal(50, chestB.CountTotal());
         Assert.Equal(30, chestD.CountById(stone));
@@ -326,6 +328,44 @@ public class FullFlowTests
         Assert.NotNull(g.BeltAt(7, -1).Slot.Item);
         Assert.Equal(stone, g.FilterAt(7, 1).Slot.Item!.QualifiedItemId);
         Assert.Equal(total - 82, chestC.CountTotal());
+    }
+
+    [Fact]
+    public void LongTunnelWithCurves_ToASplitter_ConservesItemsFor3000Ticks()
+    {
+        // Baú → Inseridor → entrada → 20 Esteiras Subterrâneas (leste 8, sul 6, leste 6) → saída → Divisor → dois baús.
+        var source = new FakeChest(36, new FakeItem("(O)388", 40), new FakeItem("(O)390", 30));
+        var north = new FakeChest();
+        var south = new FakeChest();
+        var g = new GridBuilder()
+            .Chest(-2, 0, source)
+            .Inserter(-1, 0, Direction.East, TransferTier.Stack)
+            .Tunnel(0, 0, Direction.East)
+            .Segments(1, 0, Direction.East, 8)
+            .Segments(9, 0, Direction.South, 6)
+            .Segments(9, 6, Direction.East, 6)
+            .Tunnel(15, 6, Direction.East)
+            .Splitter(16, 6)
+            .Belt(16, 5, Direction.North)
+            .Inserter(16, 4, Direction.North, TransferTier.Stack)
+            .Chest(16, 3, north)
+            .Belt(16, 7, Direction.South)
+            .Inserter(16, 8, Direction.South, TransferTier.Stack)
+            .Chest(16, 9, south);
+
+        int total = source.CountTotal();
+        for (int tick = 0; tick < 3000; tick++)
+        {
+            g.Run(1);
+            Assert.Equal(total, source.CountTotal() + g.CountInTransit() + north.CountTotal() + south.CountTotal());
+        }
+
+        Assert.Equal(20, g.Grid.UndergroundNodes.Count());
+        Assert.Equal(TunnelRole.Exit, g.TunnelAt(15, 6).Role);
+        Assert.Equal(0, source.CountTotal());
+        Assert.Equal(0, g.CountInTransit());
+        Assert.Equal(total, north.CountTotal() + south.CountTotal());
+        Assert.True(north.CountTotal() > 0 && south.CountTotal() > 0);
     }
 
     private static int CountInTransit(GridBuilder g, string id)

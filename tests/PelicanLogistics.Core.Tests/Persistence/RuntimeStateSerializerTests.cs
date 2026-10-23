@@ -383,13 +383,15 @@ public class RuntimeStateSerializerTests
     }
 
     [Fact]
-    public void RoundTrip_ItemsInsideTheUndergroundTunnel_SurviveAndKeepMoving()
+    public void RoundTrip_ItemsInTunnelsAndUndergroundSegments_SurviveInTheRightLayer_AndKeepMoving()
     {
         var world = new LogisticsWorld();
         var farm = new GridBuilder(world.GetOrCreate("Farm"));
 
-        // Entrada (1,0), saída (5,0): túnel de 3 tiles, nada depois da saída. Cinco pilhas: saída, túnel cheio e entrada.
-        farm.Belt(0, 0, Direction.East).Underground(1, 0, Direction.East).Underground(5, 0, Direction.East);
+        // Entrada (1,0), 3 Esteiras Subterrâneas (2..4) embaixo de uma esteira em (3,0), saída (5,0), nada depois dela.
+        farm.Belt(0, 0, Direction.East).Tunnel(1, 0, Direction.East).Segments(2, 0, Direction.East, 3).Tunnel(5, 0, Direction.East)
+            .Belt(3, 0, Direction.South)
+            .Item(3, 0, new FakeItem("surface", 1), 100);
         for (int i = 0; i < 5; i++)
         {
             for (int tick = 0; tick < 500 && !farm.BeltAt(0, 0).Slot.IsEmpty; tick++)
@@ -397,32 +399,60 @@ public class RuntimeStateSerializerTests
             farm.Item(0, 0, new FakeItem($"item{i + 1}", 1), Balance.End);
         }
 
-        farm.Run(300);
-        UndergroundBeltNode entrance = farm.UndergroundAt(1, 0);
-        Assert.All(entrance.Tunnel.Take(3), s => Assert.NotNull(s.Item));
-        Assert.Equal(1 + Balance.UndergroundMaxGap, entrance.Slots.Count());
+        farm.Run(400);
+        Assert.Equal("item1", farm.TunnelAt(5, 0).Slot.Item!.QualifiedItemId);
+        Assert.Equal("item2", farm.SegmentAt(4, 0).Slot.Item!.QualifiedItemId);
+        Assert.Equal("item4", farm.SegmentAt(2, 0).Slot.Item!.QualifiedItemId);
+        Assert.Equal("item5", farm.TunnelAt(1, 0).Slot.Item!.QualifiedItemId);
 
         var items = new List<ILogisticsItem>();
         WorldRuntimeState state = RuntimeStateSerializer.Export(world, it => Register(items, it));
         WorldRuntimeState json = JsonSerializer.Deserialize<WorldRuntimeState>(JsonSerializer.Serialize(state))!;
+        Assert.Equal(3, json.Grids["Farm"].Nodes.Count(n => n.Layer == NodeRuntimeState.UndergroundLayer));
         LogisticsWorld fresh = EmptyCopy(world);
         var orphans = new List<OrphanItem>();
         RuntimeStateSerializer.Import(fresh, json, i => items[i], orphans);
 
         Assert.Empty(orphans);
-        var restored = Assert.IsType<UndergroundBeltNode>(fresh.Get("Farm")!.Get(new TilePos(1, 0)));
-        var restoredExit = Assert.IsType<UndergroundBeltNode>(fresh.Get("Farm")!.Get(new TilePos(5, 0)));
-        Assert.Equal(entrance.Slots.Select(s => s.Item), restored.Slots.Select(s => s.Item));
-        Assert.Equal(entrance.Slots.Select(s => s.Progress), restored.Slots.Select(s => s.Progress));
-        Assert.Same(farm.UndergroundAt(5, 0).Slot.Item, restoredExit.Slot.Item);
+        LogisticsGrid restored = fresh.Get("Farm")!;
+        for (int x = 2; x <= 4; x++)
+        {
+            Assert.Same(farm.SegmentAt(x, 0).Slot.Item, restored.GetUnderground(new TilePos(x, 0))!.Slot.Item);
+            Assert.Equal(farm.SegmentAt(x, 0).Slot.Progress, restored.GetUnderground(new TilePos(x, 0))!.Slot.Progress);
+        }
+
+        Assert.Same(farm.BeltAt(3, 0).Slot.Item, ((BeltNode)restored.Get(new TilePos(3, 0))!).Slot.Item);
+        Assert.Same(farm.TunnelAt(5, 0).Slot.Item, ((TunnelNode)restored.Get(new TilePos(5, 0))!).Slot.Item);
 
         // Depois de carregar, liberar a saída faz a fila andar, na mesma ordem.
-        var after = new GridBuilder(fresh.Get("Farm"));
-        after.Belt(6, 0, Direction.East).Belt(7, 0, Direction.East).Belt(8, 0, Direction.East).Belt(9, 0, Direction.East).Belt(10, 0, Direction.East);
-        after.Run(500);
+        var after = new GridBuilder(restored);
+        for (int x = 6; x <= 10; x++)
+            after.Belt(x, 0, Direction.East);
+        after.Run(600);
         Assert.Equal(
             new[] { "item1", "item2", "item3", "item4", "item5" },
             Enumerable.Range(6, 5).Reverse().Select(x => after.BeltAt(x, 0).Slot.Item!.QualifiedItemId));
+    }
+
+    [Fact]
+    public void Import_StateWithoutLayer_IsSurface_OldUndergroundBeltKind_BecomesOrphans()
+    {
+        var item = new FakeItem(Wood, 2);
+        var old = new FakeItem(Wood, 3);
+        var world = WorldWithBelt(out BeltNode belt);
+        world.Get("Farm")!.Add(new TunnelNode(new TilePos(4, 0), Direction.East, TunnelRole.Entrance));
+        // Estado salvo antes da Fase 6b: sem "Layer"; o Kind 4 era a Esteira Subterrânea de vão fixo.
+        const string json =
+            "{\"Version\":1,\"Grids\":{\"Farm\":{\"Nodes\":["
+            + "{\"X\":0,\"Y\":0,\"Kind\":0,\"Slots\":[{\"ItemRef\":0,\"Progress\":300,\"EntrySide\":3,\"Blocked\":false}]},"
+            + "{\"X\":4,\"Y\":0,\"Kind\":4,\"Slots\":[{\"ItemRef\":1,\"Progress\":0,\"EntrySide\":3,\"Blocked\":false}]}"
+            + "],\"Machines\":[]}}}";
+        var orphans = new List<OrphanItem>();
+
+        RuntimeStateSerializer.Import(world, JsonSerializer.Deserialize<WorldRuntimeState>(json)!, i => i == 0 ? item : old, orphans);
+
+        Assert.Same(item, belt.Slot.Item);
+        Assert.Same(old, Assert.Single(orphans).Item);
     }
 
     [Fact]
@@ -482,10 +512,13 @@ public class RuntimeStateSerializerTests
                     InserterNode inserter => new InserterNode(inserter.Position, inserter.Facing, inserter.Tier),
                     FilterNode filter => new FilterNode(filter.Position, filter.Facing, filter.Rule),
                     SplitterNode splitter => new SplitterNode(splitter.Position),
-                    UndergroundBeltNode underground => new UndergroundBeltNode(underground.Position, underground.Facing, underground.Role),
+                    TunnelNode tunnel => new TunnelNode(tunnel.Position, tunnel.Facing, tunnel.Role),
                     _ => throw new InvalidOperationException($"Nó inesperado: {node.Kind}."),
                 });
             }
+
+            foreach (UndergroundSegmentNode segment in grid.UndergroundNodes)
+                target.AddUnderground(new UndergroundSegmentNode(segment.Position, segment.Facing));
         }
 
         return copy;

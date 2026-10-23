@@ -31,12 +31,14 @@ public static class RuntimeStateSerializer
         var state = new WorldRuntimeState();
         foreach ((string key, LogisticsGrid grid) in world.Grids)
         {
-            if (grid.Count == 0 && grid.MachineSlots.Count == 0)
+            if (grid.TotalCount == 0 && grid.MachineSlots.Count == 0)
                 continue;
 
             var gridState = new GridRuntimeState();
             foreach (LogisticsNode node in grid.Nodes)
-                gridState.Nodes.Add(ExportNode(node, register));
+                gridState.Nodes.Add(ExportNode(node, NodeRuntimeState.SurfaceLayer, register));
+            foreach (UndergroundSegmentNode segment in grid.UndergroundNodes)
+                gridState.Nodes.Add(ExportNode(segment, NodeRuntimeState.UndergroundLayer, register));
 
             foreach ((TilePos pos, VirtualSlots slots) in grid.MachineSlots.Entries)
             {
@@ -89,7 +91,7 @@ public static class RuntimeStateSerializer
                     continue;
 
                 var pos = new TilePos(nodeState.X, nodeState.Y);
-                LogisticsNode? node = compatible ? world.Get(key)?.Get(pos) : null;
+                LogisticsNode? node = compatible ? FindNode(world.Get(key), pos, nodeState.Layer) : null;
                 if (node != null && node.Kind == nodeState.Kind)
                     ImportNode(key, node, nodeState, refs, orphans);
                 else
@@ -109,7 +111,18 @@ public static class RuntimeStateSerializer
         }
     }
 
-    private static NodeRuntimeState ExportNode(LogisticsNode node, Func<ILogisticsItem, int> register)
+    /// <summary>O nó salvo na camada indicada; camada desconhecida → nenhum (os itens viram órfãos).</summary>
+    private static LogisticsNode? FindNode(LogisticsGrid? grid, TilePos pos, int layer)
+    {
+        return layer switch
+        {
+            NodeRuntimeState.SurfaceLayer => grid?.Get(pos),
+            NodeRuntimeState.UndergroundLayer => grid?.GetUnderground(pos),
+            _ => null,
+        };
+    }
+
+    private static NodeRuntimeState ExportNode(LogisticsNode node, int layer, Func<ILogisticsItem, int> register)
     {
         (int input, int output) = node.ExportPointers();
         var nodeState = new NodeRuntimeState
@@ -117,6 +130,7 @@ public static class RuntimeStateSerializer
             X = node.Position.X,
             Y = node.Position.Y,
             Kind = node.Kind,
+            Layer = layer,
             Cooldown = node.ExportCooldown(),
             InputPointer = input,
             OutputPointer = output,

@@ -41,7 +41,7 @@ public sealed class LogisticsWorld
     {
         foreach ((string key, LogisticsGrid grid) in this.grids)
         {
-            if (grid.Count == 0 && grid.MachineSlots.Count == 0)
+            if (grid.TotalCount == 0 && grid.MachineSlots.Count == 0)
                 continue;
 
             IEndpointProvider? endpoints = endpointsFor(key);

@@ -31,4 +31,10 @@ public class BalanceTests
         Assert.Equal(15, Balance.InserterReturnTicks);
         Assert.Equal(Balance.TicksPerSecond / 2, travel + Balance.InserterReturnTicks);
     }
+
+    [Fact]
+    public void Underground_HasTheSpeedOfTier2()
+    {
+        Assert.Equal(Balance.BeltSpeedFast, Balance.UndergroundSpeed);
+    }
 }

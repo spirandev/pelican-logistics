@@ -18,7 +18,11 @@ public sealed class TickContext
 
     public IEndpointProvider Endpoints { get; }
 
+    /// <summary>O nó da superfície no tile.</summary>
     public LogisticsNode? NodeAt(TilePos pos) => this.Grid.Get(pos);
+
+    /// <summary>A Esteira Subterrânea no tile.</summary>
+    public UndergroundSegmentNode? UndergroundAt(TilePos pos) => this.Grid.GetUnderground(pos);
 
     /// <summary>
     /// Tenta entregar a pilha do slot ao nó vizinho na direção 'outSide'.
