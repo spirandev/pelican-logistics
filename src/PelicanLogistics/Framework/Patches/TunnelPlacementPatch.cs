@@ -8,7 +8,7 @@ namespace PelicanLogistics.Framework.Patches;
 
 /// <summary>
 /// Postfix em <c>Object.canBePlacedHere(GameLocation, Vector2, CollisionMask, bool)</c>: o Túnel só pode ser colocado com
-/// o Capacete de Engenheiro na cabeça e num tile sem Esteira Subterrânea (plano mestre D18, D21). O jogo consulta esse
+/// o Capacete de Engenheiro na cabeça e num tile sem bloco subterrâneo (plano mestre D18, D21, D22). O jogo consulta esse
 /// método ao colocar um objeto (botão de ação ou de usar ferramenta, via <c>Utility.playerCanPlaceItemHere</c>) e na
 /// prévia de colocação. A mensagem para o jogador é dada pelo <c>UndergroundController</c>, porque o jogo chama o método
 /// sem pedir erro.

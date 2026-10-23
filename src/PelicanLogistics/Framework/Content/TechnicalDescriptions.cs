@@ -29,10 +29,13 @@ internal static class TechnicalDescriptions
                 break;
             case ItemIds.FilterCommon:
             case ItemIds.FilterComplete:
+            case ItemIds.UndergroundFilterCommon:
+            case ItemIds.UndergroundFilterComplete:
                 lines.Add(Speed(i18n, TechnicalInfo.FilterTilesPerSecond));
                 lines.Add(i18n.Get("tech.one-stack"));
                 break;
             case ItemIds.Splitter:
+            case ItemIds.UndergroundSplitter:
                 lines.Add(Speed(i18n, TechnicalInfo.SplitterTilesPerSecond));
                 lines.Add(i18n.Get("tech.one-stack"));
                 break;

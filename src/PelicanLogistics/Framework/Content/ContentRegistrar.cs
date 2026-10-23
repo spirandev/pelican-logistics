@@ -71,9 +71,9 @@ internal sealed class ContentRegistrar
     }
 
     /// <summary>
-    /// Ponte, Regulador e Esteira Subterrânea: objetos comuns que o jogo não coloca no mapa. <c>Object.isPlaceable</c> só aceita
+    /// Ponte, Regulador e itens subterrâneos: objetos comuns que o jogo não coloca no mapa. <c>Object.isPlaceable</c> só aceita
     /// categorias -8, -9, -74, -19, o tipo "Crafting" e alguns IDs; "Basic" com categoria 0 não é colocável. A tag
-    /// <c>not_placeable</c> garante isso mesmo se as regras do jogo mudarem. O mod aplica o acessório, ou cria o segmento
+    /// <c>not_placeable</c> garante isso mesmo se as regras do jogo mudarem. O mod aplica o acessório, ou cria o bloco
     /// subterrâneo, pelo clique.
     /// </summary>
     private void EditObjects(IAssetData asset)

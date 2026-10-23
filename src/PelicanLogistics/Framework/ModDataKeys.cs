@@ -24,10 +24,11 @@ internal static class ModDataKeys
     public const string TunnelRole = Prefix + "TunnelRole";
 
     /// <summary>
-    /// No <c>modData</c> do <b>local</b> (não de um objeto): as Esteiras Subterrâneas do local, em JSON
-    /// (<c>UndergroundLayoutSerializer</c>), plano mestre D19.
+    /// No <c>modData</c> do <b>local</b> (não de um objeto): os blocos subterrâneos do local (Esteiras, Filtros e Divisores
+    /// Subterrâneos, com a regra dos filtros), em JSON (<c>UndergroundLayoutSerializer</c>), plano mestre D19 e D22. O nome
+    /// da chave é o da Fase 6b, quando só havia Esteiras Subterrâneas, para os saves antigos continuarem valendo.
     /// </summary>
-    public const string UndergroundSegments = Prefix + "UndergroundSegments";
+    public const string UndergroundLayout = Prefix + "UndergroundSegments";
 
     /// <summary>Acessório sobre o bloco: "Bridge" | "Regulator" (ausente = nenhum).</summary>
     public const string Accessory = Prefix + "Accessory";

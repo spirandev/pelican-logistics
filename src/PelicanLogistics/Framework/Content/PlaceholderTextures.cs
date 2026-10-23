@@ -30,8 +30,9 @@ namespace PelicanLogistics.Framework.Content;
 /// | 9      | Túnel (ícone da entrada) |
 /// </code>
 /// Novos blocos acrescentam índices no fim de <see cref="Blocks"/>. A folha dos objetos comuns (<see cref="ObjectSheetAssetName"/>,
-/// <c>Data/Objects</c>) tem células de 16×16: 0 = Ponte, 1 = Regulador, 2 = Esteira Subterrânea. O Capacete de Engenheiro
-/// tem uma folha própria de chapéu (<see cref="HatSheetAssetName"/>, 20×80).
+/// <c>Data/Objects</c>) tem células de 16×16: 0 = Ponte, 1 = Regulador, 2 = Esteira Subterrânea, 3 = Divisor Subterrâneo,
+/// 4 = Filtro Comum Subterrâneo, 5 = Filtro Completo Subterrâneo. O Capacete de Engenheiro tem uma folha própria de chapéu
+/// (<see cref="HatSheetAssetName"/>, 20×80).
 /// </remarks>
 internal static class PlaceholderTextures
 {
@@ -69,11 +70,15 @@ internal static class PlaceholderTextures
         (ItemIds.Bridge, () => PlaceholderPainter.PaintAccessoryIcon(AccessoryKind.Bridge)),
         (ItemIds.Regulator, () => PlaceholderPainter.PaintAccessoryIcon(AccessoryKind.Regulator)),
         (ItemIds.UndergroundBelt, () => PlaceholderPainter.PaintUndergroundSegment()),
+        (ItemIds.UndergroundSplitter, () => PlaceholderPainter.PaintSplitter(underground: true)),
+        (ItemIds.UndergroundFilterCommon, () => PlaceholderPainter.PaintFilter(false, underground: true)),
+        (ItemIds.UndergroundFilterComplete, () => PlaceholderPainter.PaintFilter(true, underground: true)),
     };
 
     private static readonly Dictionary<string, Texture2D> WorldSprites = new();
     private static readonly Dictionary<(BeltTier Tier, bool FromLeft), Texture2D> BeltCurveSprites = new();
     private static readonly Dictionary<TunnelRole, Texture2D> TunnelSprites = new();
+    private static readonly Dictionary<string, Texture2D> UndergroundSprites = new();
     private static Texture2D? segmentSprite;
     private static Texture2D? segmentCurveLeftSprite;
     private static Texture2D? segmentCurveRightSprite;
@@ -143,6 +148,21 @@ internal static class PlaceholderTextures
         return fromLeft
             ? segmentCurveLeftSprite ??= ToTexture(PlaceholderPainter.PaintUndergroundSegmentCurve(true))
             : segmentCurveRightSprite ??= ToTexture(PlaceholderPainter.PaintUndergroundSegmentCurve(false));
+    }
+
+    /// <summary>
+    /// Sprite de mundo (16×16, apontando para o norte) de um item subterrâneo que não é a Esteira Subterrânea (Divisor e
+    /// Filtros Subterrâneos): o mesmo da folha dos objetos. Guardado em cache.
+    /// </summary>
+    public static Texture2D GetUndergroundSprite(string itemId)
+    {
+        if (!UndergroundSprites.TryGetValue(itemId, out Texture2D? texture))
+        {
+            texture = ToTexture(Objects[ObjectSpriteIndexOf(itemId)].Paint());
+            UndergroundSprites[itemId] = texture;
+        }
+
+        return texture;
     }
 
     /// <summary>Índice do item na folha de ícones.</summary>
