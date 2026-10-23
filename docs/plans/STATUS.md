@@ -12,7 +12,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 3: Inseridor único | Concluída | `fase-3-inseridor-unico` | [#4](https://github.com/spirandev/pelican-logistics/pull/4) | OK em 2026-10-17 (alguns itens não testados, ver pendências) |
 | 4: Persistência | Concluída | `fase-4-persistencia` | [#5](https://github.com/spirandev/pelican-logistics/pull/5) | Compila contra o jogo; salvar/carregar não testado no jogo (ver pendências) |
 | 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
-| 6: Itens restantes | Aguardando teste local | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | Compila contra o jogo; não testado no jogo |
+| 6: Itens restantes | Concluída | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | OK em 2026-10-22 |
 | 6b: Túneis | Não iniciada | | | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
@@ -65,6 +65,11 @@ Formato sugerido:
   - Bug na interface: em 1366×768, a interface do Filtro Completo cortava a parte de baixo (só apareciam as categorias até "Artesanais, Ovos..."). Agora ela tem duas colunas (cerca de 1224×630 pixels).
   - Pedido de mudança: o Inseridor precisa funcionar com todos os blocos, como funciona com baús e máquinas. Ex.: baú → Inseridor → esteira → Divisor → Inseridor → fornalha não funcionava do Divisor para o Inseridor; baú → Inseridor → filtro → Divisor → Inseridor → fornalha também precisa funcionar. Agora o Inseridor é entrada e saída do Divisor (README "Divisor"; plano mestre D3 e D4 atualizados).
 - Não testado: salvar e carregar das regras dos filtros e dos itens dentro do Divisor e dos filtros (mesmo motivo da Fase 4). O placeholder da esteira em curva (`a739034`) foi compilado depois do teste e ainda não foi visto no jogo.
+
+### Da fase 6
+- Nenhuma pendência de correção. O mod compila contra o jogo (0 avisos), os 399 testes do Core passam e foi instalado na pasta `Mods`.
+- Testado pelo usuário em 2026-10-22: os itens novos aparecem no Clint e "tudo certo" no teste.
+- A Esteira Subterrânea de vão fixo será substituída na Fase 6b (Túnel + Esteiras Subterrâneas por tile + Capacete de Engenheiro, `fase-6b-tuneis.md`).
 
 ---
 
