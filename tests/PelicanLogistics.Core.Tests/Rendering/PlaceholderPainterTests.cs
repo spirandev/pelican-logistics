@@ -210,6 +210,24 @@ public class PlaceholderPainterTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PaintFilterAndSplitter_Underground_HaveTheDarkGrayBase_SameMarks(bool complete)
+    {
+        PixelBuffer filter = PlaceholderPainter.PaintFilter(complete, underground: true);
+        PixelBuffer splitter = PlaceholderPainter.PaintSplitter(underground: true);
+        Rgba green = complete ? PlaceholderColors.FilterComplete : PlaceholderColors.FilterCommon;
+
+        Assert.Equal(16 * 16, filter.CountOpaque());
+        Assert.Equal(PlaceholderColors.Underground, filter.Get(2, 2));
+        Assert.Equal(green, filter.Get(8, 14));
+        Assert.Equal(PlaceholderColors.Mark, filter.Get(8, 3));
+        Assert.Equal(16 * 16, splitter.CountOpaque());
+        Assert.Equal(PlaceholderColors.Underground, splitter.Get(2, 2));
+        Assert.Equal(PlaceholderColors.Splitter, splitter.Get(8, 4));
+    }
+
     [Fact]
     public void PaintEngineerHelmet_IsAHatSheet_FourFramesWithTheLampOnlyWhenFacingForwardOrSideways()
     {
