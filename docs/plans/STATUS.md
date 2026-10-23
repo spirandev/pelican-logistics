@@ -14,7 +14,7 @@ Status possíveis: `Não iniciada` · `Em andamento` · `Aguardando teste local`
 | 5: Roteamento | Concluída | `fase-5-roteamento` | [#6](https://github.com/spirandev/pelican-logistics/pull/6) | OK em 2026-10-18 (salvar/carregar não testado, ver pendências) |
 | 6: Itens restantes | Concluída | `fase-6-itens-restantes` | [#7](https://github.com/spirandev/pelican-logistics/pull/7) | OK em 2026-10-22 |
 | 6b: Túneis | Concluída | `fase-6b-tuneis` | [#8](https://github.com/spirandev/pelican-logistics/pull/8) | OK em 2026-10-23 |
-| 6c: Roteamento subterrâneo | Não iniciada | | | |
+| 6c: Roteamento subterrâneo | Aguardando teste local | `fase-6c-roteamento-subterraneo` | (PR) | |
 | 7: Dicas e alpha | Não iniciada | | | |
 
 A Fase 3 (Inseridor único) foi criada depois do teste local da Fase 2; as antigas fases 3 a 6 viraram 4 a 7. A Fase 6b (Túneis) foi criada em 2026-10-19, antes do teste local da Fase 6, a pedido do usuário: a Esteira Subterrânea de vão fixo vira Túnel + Esteiras Subterrâneas por tile, com o Capacete de Engenheiro (README e plano mestre D18 a D21 já atualizados). A Fase 6c (Roteamento subterrâneo) foi criada em 2026-10-23, depois do teste da 6b, também a pedido do usuário: Divisor e Filtros embaixo da terra (README "Roteamento subterrâneo"; plano mestre D22 e D23).
@@ -189,3 +189,18 @@ Registradas pelo agente quando precisou decidir algo que nem o README nem o plan
 - Descrições técnicas: `Object.getDescription` não guarda cache (a descrição é montada a cada chamada), então pôr ou tirar o capacete muda a dica na hora. O texto técnico é quebrado com a mesma largura do jogo (`getDescriptionWidth` é protegido; a conta foi copiada). Os números usam a cultura do i18n (`tech.culture`, "0,5" em pt-BR).
 - A camada subterrânea é desenhada no `RenderedWorld`, por cima de tudo ("visão de raio X"), com 55% de opacidade.
 - Sons: `dirtyHit` ao colocar e retirar Esteira Subterrânea (o jogo usa esse som).
+
+### Fase 6c
+- Branch: sessão local, com o nome do plano (`fase-6c-roteamento-subterraneo`).
+- Pendências da Fase 6b: nenhuma de correção.
+- Compilação: o mod foi compilado contra o jogo (0 avisos, 0 erros) e instalado na pasta `Mods`. Nenhuma API nova do jogo: só as que a Fase 6b já usava.
+- Camadas: cada nó tem a camada (`NodeLayer`, definida pela grade em `Add`/`AddUnderground`). Os vizinhos são buscados por `LogisticsGrid.NeighborOf` (superfície: o nó do tile; embaixo da terra: o bloco subterrâneo do tile ou o Túnel ligado a ele, `TunnelNode.UndergroundPosition`) e pelo `TickContext` (`NeighborAt`, `OutgoingSlot`, `CanDeliver`, `Deliver`, `PushForward`). As regras do Túnel ficam nesses métodos e em três métodos internos do Túnel (`CanReceiveFromUnderground`, `ReceiveFromUnderground`, `GetUndergroundOutgoingSlot`); os nós não testam a camada.
+- A esteira e a Esteira Subterrânea compartilham agora também a entrega, a ordem de processamento e o slot oferecido a quem puxa (tudo em `ConveyorNode`). A Esteira Subterrânea passa a oferecer o slot (o Divisor Subterrâneo puxa dela); só blocos subterrâneos a enxergam, então um Inseridor da superfície continua sem puxar dela (o teste antigo foi reescrito para conferir isso no jogo de ticks).
+- A entrada do Túnel empurra na Esteira ou no Filtro Subterrâneo à frente; com um Divisor Subterrâneo à frente, o item fica parado no fim e o Divisor puxa (o slot da entrada nunca é oferecido a nós da superfície).
+- Papel do Túnel (D21 ampliado): vira saída se o bloco subterrâneo atrás entrega no tile dele, ou seja, uma Esteira ou um Filtro Subterrâneo apontando para ele, ou um Divisor Subterrâneo (que entrega para qualquer lado). Sem isso não daria para pôr uma saída encostada num Filtro ou num Divisor Subterrâneo, como pede o README ("a saída de um Túnel com a traseira virada para o bloco recebe dele"). README e plano mestre atualizados.
+- Layout no `modData` do local: o tipo vai pelo nome (`Kind`); a direção é gravada para todos e ignorada no Divisor; `Complete` e `Rule` só aparecem nos filtros. Tipo desconhecido ou de bloco da superfície (`Belt`, `Inserter`, `Tunnel`) e direção inválida descartam a entrada; regra corrompida vira a regra vazia. A chave continua `spirandev.PelicanLogistics/UndergroundSegments` (a constante no código virou `ModDataKeys.UndergroundLayout`) para os saves da 6b continuarem valendo.
+- Interface do Filtro Subterrâneo: as mesmas da superfície. O Filtro Completo edita uma cópia da regra do nó, que passa a ser a regra do nó na primeira alteração (como na superfície); cada alteração regrava o layout do local.
+- Placeholders: o Divisor e os Filtros Subterrâneos têm a base cinza escura da Esteira Subterrânea; o sprite do mundo é o mesmo do ícone do item. O ícone do item do Filtro Comum Subterrâneo aparece no bloco, com o capacete.
+- `pl_dump`: a marca `(subterrâneo)` vai no fim dos campos de qualquer bloco subterrâneo (antes era `(subterrânea)`, só na Esteira Subterrânea, logo depois de `input=`).
+- Mensagem do Túnel sobre bloco subterrâneo: "Há um bloco subterrâneo embaixo deste tile." (antes falava só da Esteira Subterrânea).
+
